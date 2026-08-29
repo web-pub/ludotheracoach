@@ -103,3 +103,19 @@ function guardRole(expectedRole){
 function logoutUser(){
   auth.signOut().then(() => window.location.href = "login.html");
 }
+
+// ---------- protection multi-rôles (ex: page accessible à admin ET superuser) ----------
+function guardRoles(allowedRoles){
+  auth.onAuthStateChanged(async (user) => {
+    if(!user){ window.location.href = "login.html"; return; }
+    const doc = await db.collection("users").doc(user.uid).get();
+    const role = doc.exists ? doc.data().role : null;
+    if(!allowedRoles.includes(role)){
+      window.location.href = "login.html";
+      return;
+    }
+    document.querySelectorAll("[data-user-name]").forEach(el => {
+      el.textContent = doc.exists ? (doc.data().nom || user.email) : user.email;
+    });
+  });
+}

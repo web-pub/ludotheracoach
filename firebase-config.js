@@ -10,14 +10,14 @@
 // ===================================================================
 
 const firebaseConfig = {
-  apiKey: "REMPLACER_MOI",
-  authDomain: "REMPLACER_MOI.firebaseapp.com",
-  projectId: "REMPLACER_MOI",
-  storageBucket: "REMPLACER_MOI.appspot.com",
-  messagingSenderId: "REMPLACER_MOI",
-  appId: "REMPLACER_MOI"
+  apiKey: "AIzaSyCABLCol0iWI1LnO-ZrJW-uZePgFUpAMBQ",
+  authDomain: "ludotheracoach.firebaseapp.com",
+  projectId: "ludotheracoach",
+  storageBucket: "ludotheracoach.firebasestorage.app",
+  messagingSenderId: "878493053808",
+  appId: "1:878493053808:web:18a57b4dd6143003a2d5b5"
 };
 
-// Numéro de version affiché en mode Super user, pour vérifier
+// Numéro de version affiché en mode Super user et Admin, pour vérifier
 // facilement que la dernière version est bien déployée.
-const SITE_VERSION = "Isabelle V06";
+const SITE_VERSION = "Isabelle V08";

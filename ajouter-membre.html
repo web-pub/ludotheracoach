@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ajouter un membre — LudoThéraCoach</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="dash-header">
+  <div class="container">
+    <div class="who">
+      <span class="role-badge admin">Gestion des comptes</span>
+      <span data-user-name>...</span>
+    </div>
+    <a href="javascript:history.back()" class="logout-link">← Retour</a>
+  </div>
+</div>
+
+<div class="dash-body">
+  <div class="container">
+
+    <div class="section-head">
+      <span class="eyebrow">nouveau membre</span>
+      <h2>Créer un compte membre</h2>
+      <p style="max-width:560px;">L'e-mail ne doit pas forcément être une vraie adresse (comme pour les comptes créés à la main) : utilise par exemple <code>prenom.nom@ludotheracoach.local</code>. Il doit juste être unique.</p>
+    </div>
+
+    <div id="add-msg" class="auth-msg"></div>
+
+    <div class="dash-card" style="max-width:460px; margin-bottom:32px;">
+      <div class="field"><label>Nom du membre / de la famille</label><input type="text" id="new-nom" placeholder="ex. Famille Dupont"></div>
+      <div class="field"><label>E-mail (identifiant de connexion)</label><input type="email" id="new-email" placeholder="prenom.nom@ludotheracoach.local"></div>
+      <div class="field"><label>Mot de passe</label><input type="text" id="new-password" placeholder="au moins 6 caractères"></div>
+      <button class="btn btn-primary btn-block" onclick="creerMembre()">Créer le compte</button>
+    </div>
+
+    <div class="section-head">
+      <span class="eyebrow">comptes existants</span>
+      <h2>Membres</h2>
+    </div>
+    <table class="table">
+      <thead><tr><th>Nom</th><th>E-mail</th></tr></thead>
+      <tbody id="membres-table-body"><tr><td colspan="2">Chargement…</td></tr></tbody>
+    </table>
+
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="auth.js"></script>
+<script>
+guardRoles(["admin","superuser"]);
+
+async function creerMembre(){
+  const msg = document.getElementById("add-msg");
+  const nom = document.getElementById("new-nom").value.trim();
+  const email = document.getElementById("new-email").value.trim();
+  const password = document.getElementById("new-password").value;
+
+  if(!nom || !email || password.length < 6){
+    showMsg(msg, "Complète le nom, un e-mail unique et un mot de passe d'au moins 6 caractères.", "error");
+    return;
+  }
+
+  // On utilise une 2e instance Firebase temporaire pour créer le compte
+  // sans déconnecter la personne actuellement connectée (admin/superuser).
+  let secondaryApp;
+  try{
+    secondaryApp = firebase.initializeApp(firebaseConfig, "secondaire-" + Date.now());
+    const cred = await secondaryApp.auth().createUserWithEmailAndPassword(email, password);
+    const newUid = cred.user.uid;
+    await secondaryApp.auth().signOut();
+
+    await db.collection("users").doc(newUid).set({ nom, email, role: "membre" });
+
+    showMsg(msg, "Compte membre créé pour " + nom + ".", "ok");
+    document.getElementById("new-nom").value = "";
+    document.getElementById("new-email").value = "";
+    document.getElementById("new-password").value = "";
+    chargerMembres();
+  }catch(err){
+    showMsg(msg, "Erreur : " + err.message, "error");
+  }finally{
+    if(secondaryApp) secondaryApp.delete();
+  }
+}
+
+async function chargerMembres(){
+  const body = document.getElementById("membres-table-body");
+  const snap = await db.collection("users").where("role","==","membre").get();
+  if(snap.empty){ body.innerHTML = "<tr><td colspan='2'>Aucun membre pour l'instant.</td></tr>"; return; }
+  body.innerHTML = "";
+  snap.forEach(doc => {
+    const u = doc.data();
+    body.innerHTML += `<tr><td>${u.nom || "—"}</td><td>${u.email || "—"}</td></tr>`;
+  });
+}
+
+chargerMembres();
+</script>
+</body>
+</html>
