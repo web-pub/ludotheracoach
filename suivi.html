@@ -7,6 +7,10 @@
 <link rel="stylesheet" href="style.css">
 <style>
   select.suivi-select, select.evt-select{ font-family:var(--body); padding:8px 10px; border-radius:8px; border:1.5px solid rgba(42,39,51,.14); }
+  .suivi-tag{ display:inline-flex; align-items:center; gap:8px; background:var(--mauve-lt); color:var(--mauve-dk); font-size:.82rem; font-weight:600; padding:6px 10px 6px 14px; border-radius:100px; margin:0 6px 6px 0; }
+  .suivi-tag button{ background:none; border:none; cursor:pointer; color:var(--mauve-dk); font-weight:700; line-height:1; padding:0; }
+  .suivi-block{ background:#fff; border-radius:var(--radius); box-shadow:var(--shadow); padding:20px 22px; margin-bottom:16px; }
+  .add-suivi-row{ display:flex; gap:10px; flex-wrap:wrap; align-items:end; margin-top:12px; }
 </style>
 </head>
 <body>
@@ -28,7 +32,7 @@
       <a href="suivi.html">Suivi membres</a>
       <a href="compta.html">Comptabilité</a>
       <a href="rdv-admin.html">Événements / RDV</a>
-      <a href="ajouter-membre.html">Ajouter un membre</a>
+      <a href="contenu.html">Contenu du site</a>
     </nav>
   </div>
 </div>
@@ -39,13 +43,10 @@
     <div class="section-head">
       <span class="eyebrow">calendriers des membres</span>
       <h2>Suivi de chaque membre</h2>
-      <p style="max-width:600px;">Indique pour chaque membre son type de suivi. Pour un atelier ou une formation, associe-le à une session précise créée dans "Ateliers & formations".</p>
+      <p style="max-width:620px;">Un même membre peut cumuler plusieurs suivis (ex. thérapie individuelle + formation). Ajoute-en autant que nécessaire ; pour un atelier ou une formation, associe-le à une session précise créée dans "Ateliers & formations".</p>
     </div>
 
-    <table class="table">
-      <thead><tr><th>Nom</th><th>E-mail</th><th>Type de suivi</th><th>Session liée</th></tr></thead>
-      <tbody id="suivi-table-body"><tr><td colspan="4">Chargement…</td></tr></tbody>
-    </table>
+    <div id="suivi-liste">Chargement…</div>
 
   </div>
 </div>
@@ -58,6 +59,7 @@
 <script>
 guardRole("admin");
 
+const TYPE_LABELS = { individuel: "Thérapie individuelle", atelier: "Atelier des émotions", formation: "Formation" };
 let EVENEMENTS = [];
 
 async function chargerEvenementsListe(){
@@ -66,48 +68,93 @@ async function chargerEvenementsListe(){
   snap.forEach(doc => EVENEMENTS.push({ id: doc.id, ...doc.data() }));
 }
 
-function optionsEvenements(type, selectedId){
+function optionsEvenements(type){
   return EVENEMENTS.filter(e => e.type === type).map(e =>
-    `<option value="${e.id}" ${e.id === selectedId ? "selected" : ""}>${e.date} — ${e.titre} (${e.lieu})</option>`
+    `<option value="${e.id}">${e.date} — ${e.titre} (${e.lieu})</option>`
   ).join("");
+}
+
+function libelleSuivi(s){
+  if(s.type === "individuel") return TYPE_LABELS.individuel;
+  const evt = EVENEMENTS.find(e => e.id === s.eventId);
+  return TYPE_LABELS[s.type] + (evt ? " — " + evt.titre : " (session supprimée)");
 }
 
 async function chargerMembres(){
   await chargerEvenementsListe();
-  const body = document.getElementById("suivi-table-body");
-  const snap = await db.collection("users").where("role","==","membre").get();
-  if(snap.empty){ body.innerHTML = "<tr><td colspan='4'>Aucun membre pour l'instant.</td></tr>"; return; }
-  body.innerHTML = "";
-  snap.forEach(doc => {
-    const u = doc.data();
-    const suivi = u.suivi || "";
-    body.innerHTML += `<tr data-uid="${doc.id}">
-      <td>${u.nom || "—"}</td>
-      <td>${u.email || "—"}</td>
-      <td>
-        <select class="suivi-select" onchange="majSuivi('${doc.id}', this.value)">
-          <option value="">— à définir —</option>
-          <option value="individuel" ${suivi==="individuel"?"selected":""}>Thérapie individuelle</option>
-          <option value="atelier" ${suivi==="atelier"?"selected":""}>Atelier des émotions</option>
-          <option value="formation" ${suivi==="formation"?"selected":""}>Formation</option>
-        </select>
-      </td>
-      <td class="evt-cell">
-        ${suivi === "atelier" || suivi === "formation"
-          ? `<select class="evt-select" onchange="majEvenement('${doc.id}', this.value)"><option value="">— choisir —</option>${optionsEvenements(suivi, u.eventId)}</select>`
-          : "—"}
-      </td>
-    </tr>`;
+  const zone = document.getElementById("suivi-liste");
+  const [usersSnap, suivisSnap] = await Promise.all([
+    db.collection("users").where("role","==","membre").get(),
+    db.collection("suivis").get()
+  ]);
+  if(usersSnap.empty){ zone.innerHTML = "<p>Aucun membre pour l'instant.</p>"; return; }
+
+  const suivisParMembre = {};
+  suivisSnap.forEach(doc => {
+    const s = doc.data();
+    if(!suivisParMembre[s.membreUid]) suivisParMembre[s.membreUid] = [];
+    suivisParMembre[s.membreUid].push({ id: doc.id, ...s });
   });
+
+  let html = "";
+  usersSnap.forEach(doc => {
+    const u = doc.data();
+    const uid = doc.id;
+    const mesSuivis = suivisParMembre[uid] || [];
+
+    html += `<div class="suivi-block">
+      <h3 style="font-size:1rem; margin-bottom:8px;">${u.nom || "—"}</h3>
+      <div>
+        ${mesSuivis.length
+          ? mesSuivis.map(s => `<span class="suivi-tag">${libelleSuivi(s)}<button onclick="supprimerSuivi('${s.id}', '${uid}')">✕</button></span>`).join("")
+          : `<span style="font-size:.85rem; color:var(--ink-soft);">Aucun suivi pour l'instant</span>`}
+      </div>
+      <div class="add-suivi-row">
+        <select class="suivi-select" id="type-${uid}" onchange="toggleEvtSelect('${uid}')">
+          <option value="">+ ajouter un suivi —</option>
+          <option value="individuel">Thérapie individuelle</option>
+          <option value="atelier">Atelier des émotions</option>
+          <option value="formation">Formation</option>
+        </select>
+        <select class="evt-select" id="evt-${uid}" style="display:none;"></select>
+        <button class="mini-btn" onclick="ajouterSuivi('${uid}')">Ajouter</button>
+      </div>
+    </div>`;
+  });
+  zone.innerHTML = html;
 }
 
-async function majSuivi(uid, suivi){
-  await db.collection("users").doc(uid).update({ suivi, eventId: null });
+function toggleEvtSelect(uid){
+  const type = document.getElementById("type-" + uid).value;
+  const evtSelect = document.getElementById("evt-" + uid);
+  if(type === "atelier" || type === "formation"){
+    evtSelect.innerHTML = `<option value="">— choisir la session —</option>` + optionsEvenements(type);
+    evtSelect.style.display = "inline-block";
+  } else {
+    evtSelect.style.display = "none";
+    evtSelect.innerHTML = "";
+  }
+}
+
+async function ajouterSuivi(uid){
+  const type = document.getElementById("type-" + uid).value;
+  const evtSelect = document.getElementById("evt-" + uid);
+  if(!type) return;
+  if((type === "atelier" || type === "formation") && !evtSelect.value){
+    alert("Choisis la session liée avant d'ajouter ce suivi.");
+    return;
+  }
+  await db.collection("suivis").add({
+    membreUid: uid,
+    type,
+    eventId: (type === "atelier" || type === "formation") ? evtSelect.value : null
+  });
   chargerMembres();
 }
 
-async function majEvenement(uid, eventId){
-  await db.collection("users").doc(uid).update({ eventId });
+async function supprimerSuivi(suiviId, uid){
+  await db.collection("suivis").doc(suiviId).delete();
+  chargerMembres();
 }
 
 chargerMembres();

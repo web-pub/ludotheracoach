@@ -39,9 +39,11 @@
     </div>
     <div>
       <h2>Un parcours tourné vers l'enfant</h2>
+      <div id="cms-bio">
       <p>Institutrice de formation, je travaille depuis 20 ans dans une école d'enseignement spécialisé. Maman d'un ado et en couple depuis 21 ans, je sais aussi ce que la vie peut mettre sur le chemin.</p>
       <p>Comme beaucoup, je suis passée par de nombreuses épreuves — pertes, maladie, coups durs — et il m'a fallu du temps pour retrouver la lumière face à ce qui ressemblait à une véritable chaîne de montagnes. Mais rien n'est dû au hasard : à un moment, un autre chemin s'est dessiné, et j'ai choisi de l'entreprendre. Ce chemin, parcouru depuis des années, a donné naissance à LudoThéraCoach — pour aider à mon tour celles et ceux qui en ressentent le besoin, pour un petit bout de chemin ou plus, selon les besoins de chacun.</p>
       <p>J'ai suivi une formation de 4 ans en tant que Thérapeute Co-créative avec Dominique de Thier. Passionnée de développement personnel, je continue aujourd'hui encore à me former à diverses méthodes.</p>
+      </div>
       <p class="quote-strip">Une autre écoute, une autre manière de voir les choses, renaître à la vie, apprendre encore et toujours — voilà mon chemin, que je serais heureuse de partager avec vous.</p>
       <div class="trait-list">
         <span class="trait">Institutrice spécialisée</span>
@@ -101,8 +103,25 @@
 <footer>
   <div class="container">
     <span class="brand-text">Isabelle Filleul — LudoThéraCoach<span>Thérapie · Atelier des émotions · Formations</span></span>
+    <div class="footer-legal">
+      <a href="rgpd.html">Confidentialité (RGPD)</a> · <a href="cgv.html">Conditions générales</a>
+    </div>
+    <div class="footer-copyright">© 2026 LudoThéraCoach — Isabelle Filleul. Tous droits réservés.</div>
   </div>
 </footer>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+  try{
+    firebase.initializeApp(firebaseConfig);
+    firebase.firestore().collection("site").doc("contenu").get().then(doc => {
+      if(!doc.exists) return;
+      const c = doc.data();
+      if(c.bioTexte) document.getElementById("cms-bio").innerHTML = c.bioTexte.split(/\n\s*\n/).map(p => `<p>${p.trim()}</p>`).join("");
+    });
+  }catch(e){}
+</script>
 </body>
 </html>

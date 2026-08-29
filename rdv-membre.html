@@ -65,36 +65,50 @@ auth.onAuthStateChanged(async (user) => {
 
 async function chargerRdvs(){
   const zone = document.getElementById("rdv-liste");
-  const [rdvSnap, coordDoc] = await Promise.all([
+  const [rdvSnap, evtSnap, coordDoc] = await Promise.all([
     db.collection("rdvs").orderBy("date").get(),
+    db.collection("evenements").where("type","==","atelier").get(),
     db.collection("settings").doc("facturation").get()
   ]);
   const iban = coordDoc.exists ? (coordDoc.data().iban || "à demander à Isabelle") : "à demander à Isabelle";
 
-  if(rdvSnap.empty){ zone.innerHTML = "<p>Aucun événement prévu pour l'instant.</p>"; return; }
+  const items = [];
+  rdvSnap.forEach(doc => items.push({ id: doc.id, source: "rdv", ...doc.data() }));
+  evtSnap.forEach(doc => {
+    const e = doc.data();
+    if((e.prixParPersonne || 0) > 0){
+      items.push({ id: doc.id, source: "atelier", titre: e.titre, date: e.date, heure: e.heureDebut + " – " + e.heureFin, lieu: e.lieu, description: e.description, prixParPersonne: e.prixParPersonne });
+    }
+  });
+  items.sort((a,b) => (a.date||"").localeCompare(b.date||""));
+
+  if(items.length === 0){ zone.innerHTML = "<p>Aucun événement prévu pour l'instant.</p>"; return; }
 
   let html = "";
-  for(const doc of rdvSnap.docs){
-    const r = doc.data();
-    const repDoc = await db.collection("rdvReponses").doc(doc.id + "_" + currentUid).get();
+  for(const r of items){
+    const repDoc = await db.collection("rdvReponses").doc(r.id + "_" + currentUid).get();
     const rep = repDoc.exists ? repDoc.data() : null;
-    const communication = r.titre + " - " + currentNom;
+    const communicationRep = r.titre + " - " + currentNom;
 
     html += `<div class="rdv-block">
+      ${r.source === "atelier" ? `<span class="tag" style="color:var(--gold);">Atelier des émotions</span>` : ""}
       <h3>${r.titre}</h3>
       <p>${r.date}${r.heure ? " · " + r.heure : ""}${r.lieu ? " · 📍 " + r.lieu : ""}</p>
       ${r.description ? `<p>${r.description}</p>` : ""}
       <p><strong>${r.prixParPersonne.toFixed(2)} € / personne</strong></p>`;
 
     if(!rep){
-      html += `
-        <div class="field"><label>Nombre de personnes</label><input type="number" min="1" value="1" id="nb-${doc.id}" style="width:90px;"></div>
-        <button class="btn btn-primary" onclick="reserverRdv('${doc.id}', ${r.prixParPersonne}, '${r.titre.replace(/'/g,"’")}')">Je viens</button>
-      `;
+      if(r.source === "atelier"){
+        html += `<button class="btn btn-primary" onclick="inscrireAtelier('${r.id}', ${r.prixParPersonne})">Je m'inscris</button>`;
+      } else {
+        html += `
+          <div class="field"><label>Nombre de personnes</label><input type="number" min="1" value="1" id="nb-${r.id}" style="width:90px;"></div>
+          <button class="btn btn-primary" onclick="reserverRdv('${r.id}', ${r.prixParPersonne})">Je viens</button>
+        `;
+      }
     } else {
-      const communicationRep = r.titre + " - " + currentNom;
       html += `
-        <p>Tu as indiqué venir à <strong>${rep.nombrePersonnes}</strong> personne(s) — montant : <strong>${rep.montant.toFixed(2)} €</strong></p>
+        <p>${r.source === "atelier" ? "Tu es inscrit(e)" : "Tu as indiqué venir à <strong>" + rep.nombrePersonnes + "</strong> personne(s)"} — montant : <strong>${rep.montant.toFixed(2)} €</strong></p>
         ${rep.paye
           ? `<p class="pill paye" style="display:inline-block;">Paiement confirmé par Isabelle</p>`
           : `
@@ -105,7 +119,7 @@ async function chargerRdvs(){
             </div>
             ${rep.declarePaye
               ? `<p class="pill" style="display:inline-block; background:var(--gold-lt); color:#8a5a10;">Paiement signalé, en attente de confirmation</p>`
-              : `<button class="btn-small" onclick="declarerPaye('${doc.id}')">J'ai payé</button>`
+              : `<button class="btn-small" onclick="declarerPaye('${r.id}')">J'ai payé</button>`
             }
           `
         }
@@ -116,7 +130,15 @@ async function chargerRdvs(){
   zone.innerHTML = html;
 }
 
-async function reserverRdv(rdvId, prix, titre){
+async function inscrireAtelier(evtId, prix){
+  await db.collection("rdvReponses").doc(evtId + "_" + currentUid).set({
+    rdvId: evtId, membreUid: currentUid, membreNom: currentNom,
+    nombrePersonnes: 1, montant: prix, paye: false, declarePaye: false
+  });
+  chargerRdvs();
+}
+
+async function reserverRdv(rdvId, prix){
   const nb = parseInt(document.getElementById("nb-" + rdvId).value) || 1;
   const montant = prix * nb;
   await db.collection("rdvReponses").doc(rdvId + "_" + currentUid).set({

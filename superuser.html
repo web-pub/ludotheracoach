@@ -12,7 +12,7 @@
   <div class="container">
     <div class="dash-toprow">
     <div class="who">
-      <span class="role-badge super">Super user</span>
+      <span class="role-badge super" data-user-role>Super user</span>
       <span data-user-name>...</span>
       <span class="version-tag" id="version-tag"></span>
     </div>
@@ -20,10 +20,13 @@
     </div>
     <nav class="dash-subnav">
       <a href="superuser.html">Tableau de bord</a>
-      <a href="admin.html">Espace Admin</a>
-      <a href="membre.html">Espace Membre</a>
-      <a href="ajouter-membre.html">Ajouter un membre</a>
+      <a href="fiches.html">Fiches membres</a>
+      <a href="disponibilites.html">Disponibilités</a>
+      <a href="evenements.html">Ateliers & formations</a>
+      <a href="suivi.html">Suivi membres</a>
+      <a href="compta.html">Comptabilité</a>
       <a href="rdv-admin.html">Événements / RDV</a>
+      <a href="contenu.html">Contenu du site</a>
     </nav>
   </div>
 </div>
@@ -32,41 +35,52 @@
   <div class="container">
 
     <div class="section-head">
-      <span class="eyebrow">vue d'ensemble</span>
-      <h2>Tableau de bord — accès total</h2>
+      <span class="eyebrow">accès total</span>
+      <h2>Ton espace de gestion</h2>
     </div>
 
-    <div class="dash-cards" style="margin-bottom:40px;">
+    <div class="dash-cards">
       <div class="dash-card" style="--accent:var(--turquoise)">
-        <h3>Espace Admin</h3>
-        <p>Fiches membres, calendriers, compta d'Isabelle.</p>
-        <a href="admin.html" class="btn-small">Consulter →</a>
-      </div>
-      <div class="dash-card" style="--accent:var(--gold)">
-        <h3>Espace Membre</h3>
-        <p>Aperçu de ce que voient les membres.</p>
-        <a href="membre.html" class="btn-small">Consulter →</a>
-      </div>
-      <div class="dash-card" style="--accent:var(--turquoise-dk)">
-        <h3>Ajouter un membre</h3>
-        <p>Créer un compte de connexion pour une nouvelle famille.</p>
-        <a href="ajouter-membre.html" class="btn-small">Ouvrir →</a>
+        <h3>Fiches membres</h3>
+        <p>Ajouter une famille, compléter ou modifier ses coordonnées et celles des enfants, archiver un membre.</p>
+        <a href="fiches.html" class="btn-small">Ouvrir →</a>
       </div>
       <div class="dash-card" style="--accent:var(--mauve)">
         <h3>Événements / RDV</h3>
-        <p>Créer des RDV, suivre réservations et paiements.</p>
+        <p>Créer des RDV avec prix par personne, suivre les réservations et les paiements.</p>
         <a href="rdv-admin.html" class="btn-small">Ouvrir →</a>
       </div>
+      <div class="dash-card" style="--accent:var(--gold)">
+        <h3>Mes disponibilités</h3>
+        <p>Indiquer les créneaux libres pour les séances individuelles.</p>
+        <a href="disponibilites.html" class="btn-small">Ouvrir →</a>
+      </div>
       <div class="dash-card" style="--accent:var(--mauve)">
-        <h3>Statut du chantier</h3>
-        <p>Vitrine ✓ · Connexion 3 rôles ✓ · Compta ✓ · Calendriers ✓ · Fiches membres ✓ · Événements/RDV ✓</p>
-        <span class="status">cahier des charges initial complet</span>
+        <h3>Ateliers & formations</h3>
+        <p>Planifier les dates et lieux, définir un prix par personne et valider les paiements.</p>
+        <a href="evenements.html" class="btn-small">Ouvrir →</a>
+      </div>
+      <div class="dash-card" style="--accent:var(--turquoise-dk)">
+        <h3>Suivi des membres</h3>
+        <p>Assigner à chaque membre son type de suivi et sa session (atelier/formation).</p>
+        <a href="suivi.html" class="btn-small">Ouvrir →</a>
+      </div>
+      <div class="dash-card" style="--accent:var(--turquoise-dk)">
+        <h3>Comptabilité</h3>
+        <p>Factures de vente sans TVA, achats/frais déductibles et un P&L simplifié.</p>
+        <a href="compta.html" class="btn-small">Ouvrir →</a>
+      </div>
+      <div class="dash-card" style="--accent:var(--gold)">
+        <h3>Contenu du site</h3>
+        <p>Modifier les textes des pages publiques (accueil, activités, présentation, contact).</p>
+        <a href="contenu.html" class="btn-small">Ouvrir →</a>
       </div>
     </div>
 
     <div class="section-head">
-      <span class="eyebrow">gestion des comptes</span>
-      <h2>Utilisateurs</h2>
+      <span class="eyebrow">exclusif au super user</span>
+      <h2>Comptes & mots de passe</h2>
+      <p style="max-width:560px;">Vue complète de tous les comptes (admin, membres, super users) et outil de réinitialisation de mot de passe.</p>
     </div>
 
     <table class="table" style="margin-bottom:32px;">
@@ -78,7 +92,7 @@
 
     <div class="dash-card" style="max-width:440px; --accent:var(--ink);">
       <h3>Réinitialiser un mot de passe</h3>
-      <p>Envoie un lien de réinitialisation à un utilisateur (admin ou membre), à partir de son identifiant.</p>
+      <p>Envoie un lien de réinitialisation à un utilisateur, à partir de son identifiant.</p>
       <div id="reset-msg" class="auth-msg"></div>
       <div class="field">
         <input type="text" id="reset-identifiant" placeholder="identifiant de l'utilisateur">

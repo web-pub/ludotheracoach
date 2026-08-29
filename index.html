@@ -28,8 +28,8 @@
   <div class="container hero-grid">
     <div>
       <span class="eyebrow">un espace pour grandir en douceur</span>
-      <h1>Apprivoiser ses <em>émotions</em>, un pas à la fois</h1>
-      <p>Isabelle Filleul accompagne enfants et familles en séances individuelles, en ateliers des émotions en groupe, et propose des formations autour du vécu émotionnel des enfants.</p>
+      <h1 id="cms-hero-titre">Apprivoiser ses <em>émotions</em>, un pas à la fois</h1>
+      <p id="cms-hero-texte">Isabelle Filleul accompagne enfants et familles en séances individuelles, en ateliers des émotions en groupe, et propose des formations autour du vécu émotionnel des enfants.</p>
       <div class="hero-actions">
         <a href="activites.html" class="btn btn-primary">Découvrir les activités</a>
         <a href="isabelle.html" class="btn btn-ghost">Qui est Isabelle ?</a>
@@ -93,8 +93,28 @@
 <footer>
   <div class="container">
     <span class="brand-text">Isabelle Filleul — LudoThéraCoach<span>Thérapie · Atelier des émotions · Formations</span></span>
+    <div class="footer-legal">
+      <a href="rgpd.html">Confidentialité (RGPD)</a> · <a href="cgv.html">Conditions générales</a>
+    </div>
+    <div class="footer-copyright">© 2026 LudoThéraCoach — Isabelle Filleul. Tous droits réservés.</div>
   </div>
 </footer>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+  // Contenu éditable depuis l'espace Admin ("Contenu du site") — si rien n'est
+  // configuré, le texte codé en dur ci-dessus reste affiché tel quel.
+  try{
+    firebase.initializeApp(firebaseConfig);
+    firebase.firestore().collection("site").doc("contenu").get().then(doc => {
+      if(!doc.exists) return;
+      const c = doc.data();
+      if(c.heroTitre) document.getElementById("cms-hero-titre").textContent = c.heroTitre;
+      if(c.heroTexte) document.getElementById("cms-hero-texte").textContent = c.heroTexte;
+    });
+  }catch(e){}
+</script>
 </body>
 </html>

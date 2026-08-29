@@ -10,6 +10,12 @@
   .fiche-detail.open{ display:table-row; }
   .fiche-detail td{ padding:18px 22px; }
   .enfant-tag{ display:inline-block; background:var(--mauve-lt); color:var(--mauve-dk); font-size:.82rem; font-weight:600; padding:5px 12px; border-radius:100px; margin:0 6px 6px 0; }
+  .pill.actif{ background:var(--turquoise-lt); color:var(--turquoise-dk); }
+  .pill.archive{ background:var(--bg-soft); color:var(--ink-soft); }
+  .enfant-row{ display:flex; gap:10px; align-items:end; margin-bottom:10px; }
+  .enfant-row .field{ margin-bottom:0; flex:1; }
+  .edit-fiche{ display:none; margin-top:16px; padding-top:16px; border-top:1px solid rgba(42,39,51,.1); }
+  .edit-fiche.open{ display:block; }
 </style>
 </head>
 <body>
@@ -31,7 +37,7 @@
       <a href="suivi.html">Suivi membres</a>
       <a href="compta.html">Comptabilité</a>
       <a href="rdv-admin.html">Événements / RDV</a>
-      <a href="ajouter-membre.html">Ajouter un membre</a>
+      <a href="contenu.html">Contenu du site</a>
     </nav>
   </div>
 </div>
@@ -40,13 +46,26 @@
   <div class="container">
 
     <div class="section-head">
+      <span class="eyebrow">nouveau membre</span>
+      <h2>Ajouter un membre</h2>
+      <p style="max-width:560px;">Choisis un identifiant unique pour ce membre (ex. <code>FamilleDupont</code>) — il ne s'agit pas d'une adresse e-mail, c'est ce que la famille tapera pour se connecter.</p>
+    </div>
+    <div id="add-msg" class="auth-msg"></div>
+    <div class="dash-card" style="max-width:460px; margin-bottom:36px;">
+      <div class="field"><label>Nom du membre / de la famille</label><input type="text" id="new-nom" placeholder="ex. Famille Dupont"></div>
+      <div class="field"><label>Identifiant de connexion</label><input type="text" id="new-identifiant" placeholder="ex. FamilleDupont"></div>
+      <div class="field"><label>Mot de passe</label><input type="text" id="new-password" placeholder="au moins 6 caractères"></div>
+      <button class="btn btn-primary btn-block" onclick="creerMembre()">Créer le compte</button>
+    </div>
+
+    <div class="section-head">
       <span class="eyebrow">familles suivies</span>
       <h2>Fiches membres</h2>
     </div>
 
     <table class="table">
-      <thead><tr><th>Nom (compte)</th><th>E-mail</th><th>Parent renseigné</th><th>Enfant(s)</th><th></th></tr></thead>
-      <tbody id="fiches-table-body"><tr><td colspan="5">Chargement…</td></tr></tbody>
+      <thead><tr><th>Nom (compte)</th><th>Identifiant</th><th>Statut</th><th>Parent renseigné</th><th>Enfant(s)</th><th></th></tr></thead>
+      <tbody id="fiches-table-body"><tr><td colspan="6">Chargement…</td></tr></tbody>
     </table>
 
   </div>
@@ -60,32 +79,110 @@
 <script>
 guardRole("admin");
 
+// =====================================================================
+// AJOUTER UN MEMBRE
+// =====================================================================
+
+async function creerMembre(){
+  const msg = document.getElementById("add-msg");
+  const nom = document.getElementById("new-nom").value.trim();
+  const identifiant = document.getElementById("new-identifiant").value.trim();
+  const password = document.getElementById("new-password").value;
+
+  if(!nom || !identifiant || password.length < 6){
+    showMsg(msg, "Complète le nom, un identifiant unique et un mot de passe d'au moins 6 caractères.", "error");
+    return;
+  }
+
+  const cle = identifiant.toLowerCase();
+  const dejaPris = await db.collection("identifiants").doc(cle).get();
+  if(dejaPris.exists){
+    showMsg(msg, "Cet identifiant est déjà utilisé, choisis-en un autre.", "error");
+    return;
+  }
+
+  const email = cle + "@ludotheracoach.local";
+
+  let secondaryApp;
+  try{
+    secondaryApp = firebase.initializeApp(firebaseConfig, "secondaire-" + Date.now());
+    const cred = await secondaryApp.auth().createUserWithEmailAndPassword(email, password);
+    const newUid = cred.user.uid;
+    await secondaryApp.auth().signOut();
+
+    await db.collection("users").doc(newUid).set({ nom, email, identifiant, role: "membre", actif: true });
+    await db.collection("identifiants").doc(cle).set({ email });
+
+    showMsg(msg, "Compte membre créé pour " + nom + " (identifiant : " + identifiant + ").", "ok");
+    document.getElementById("new-nom").value = "";
+    document.getElementById("new-identifiant").value = "";
+    document.getElementById("new-password").value = "";
+    chargerFiches();
+  }catch(err){
+    showMsg(msg, "Erreur : " + err.message, "error");
+  }finally{
+    if(secondaryApp) secondaryApp.delete();
+  }
+}
+
+// =====================================================================
+// LISTE + FICHES + ARCHIVAGE
+// =====================================================================
+
 async function chargerFiches(){
   const body = document.getElementById("fiches-table-body");
   const usersSnap = await db.collection("users").where("role","==","membre").get();
-  if(usersSnap.empty){ body.innerHTML = "<tr><td colspan='5'>Aucun membre pour l'instant.</td></tr>"; return; }
+  if(usersSnap.empty){ body.innerHTML = "<tr><td colspan='6'>Aucun membre pour l'instant.</td></tr>"; return; }
 
   body.innerHTML = "";
   for(const userDoc of usersSnap.docs){
     const u = userDoc.data();
-    const ficheDoc = await db.collection("fiches").doc(userDoc.id).get();
+    const uid = userDoc.id;
+    const ficheDoc = await db.collection("fiches").doc(uid).get();
     const f = ficheDoc.exists ? ficheDoc.data() : null;
     const nbEnfants = f && f.enfants ? f.enfants.length : 0;
+    const actif = u.actif !== false;
 
-    body.innerHTML += `<tr onclick="toggleDetail('${userDoc.id}')" style="cursor:pointer;">
-      <td>${u.nom || "—"}</td>
-      <td>${u.email || "—"}</td>
-      <td>${f ? (f.parentNom || "renseigné") : "pas encore complétée"}</td>
-      <td>${nbEnfants}</td>
-      <td><button class="mini-btn">Voir</button></td>
+    body.innerHTML += `<tr>
+      <td style="cursor:pointer;" onclick="toggleDetail('${uid}')">${u.nom || "—"}</td>
+      <td>${u.identifiant || "—"}</td>
+      <td><span class="pill ${actif ? "actif" : "archive"}">${actif ? "Actif" : "Archivé"}</span></td>
+      <td style="cursor:pointer;" onclick="toggleDetail('${uid}')">${f ? (f.parentNom || "renseigné") : "pas encore complétée"}</td>
+      <td style="cursor:pointer;" onclick="toggleDetail('${uid}')">${nbEnfants}</td>
+      <td>
+        <button class="mini-btn" onclick="toggleDetail('${uid}')">Voir</button>
+        <button class="mini-btn" onclick="toggleArchive('${uid}', ${actif})">${actif ? "Archiver" : "Réactiver"}</button>
+      </td>
     </tr>
-    <tr class="fiche-detail" id="detail-${userDoc.id}">
-      <td colspan="5">
-        ${f ? `
-          <p><strong>Parent :</strong> ${f.parentNom || "—"} · 📞 ${f.parentTelephone || "—"} · ✉️ ${f.parentEmail || "—"}</p>
-          <p><strong>Adresse :</strong> ${f.parentAdresse || "—"}</p>
-          <p><strong>Enfant(s) :</strong> ${nbEnfants ? f.enfants.map(e => `<span class="enfant-tag">${e.nom}${e.dateNaissance ? " — " + e.dateNaissance : ""}</span>`).join("") : "aucun renseigné"}</p>
-        ` : `<p>Ce membre n'a pas encore complété sa fiche.</p>`}
+    <tr class="fiche-detail" id="detail-${uid}">
+      <td colspan="6">
+        <div id="vue-${uid}">
+          ${f ? `
+            <p><strong>Parent :</strong> ${f.parentNom || "—"} · 📞 ${f.parentTelephone || "—"} · ✉️ ${f.parentEmail || "—"}</p>
+            <p><strong>Adresse :</strong> ${f.parentAdresse || "—"}</p>
+            <p><strong>Enfant(s) :</strong> ${nbEnfants ? f.enfants.map(e => `<span class="enfant-tag">${e.nom}${e.dateNaissance ? " — " + e.dateNaissance : ""}</span>`).join("") : "aucun renseigné"}</p>
+          ` : `<p>Ce membre n'a pas encore complété sa fiche.</p>`}
+          <button class="mini-btn" onclick="ouvrirEdition('${uid}')">Modifier la fiche</button>
+        </div>
+        <div class="edit-fiche" id="edit-${uid}">
+          <div class="field"><label>Nom et prénom du parent</label><input type="text" id="ep-nom-${uid}" value="${f && f.parentNom || ""}"></div>
+          <div class="field"><label>Téléphone</label><input type="tel" id="ep-tel-${uid}" value="${f && f.parentTelephone || ""}"></div>
+          <div class="field"><label>E-mail</label><input type="email" id="ep-email-${uid}" value="${f && f.parentEmail || ""}"></div>
+          <div class="field"><label>Adresse</label><input type="text" id="ep-adresse-${uid}" value="${f && f.parentAdresse || ""}"></div>
+          <div id="ep-enfants-${uid}">
+            ${(f && f.enfants && f.enfants.length ? f.enfants : [{nom:"",dateNaissance:""}]).map(e => `
+              <div class="enfant-row">
+                <div class="field"><label>Nom de l'enfant</label><input type="text" class="ep-enfant-nom" value="${e.nom || ""}"></div>
+                <div class="field"><label>Date de naissance</label><input type="date" class="ep-enfant-date" value="${e.dateNaissance || ""}"></div>
+                <button class="mini-btn" onclick="this.parentElement.remove()">Retirer</button>
+              </div>`).join("")}
+          </div>
+          <button class="mini-btn" onclick="ajouterLigneEnfantEdit('${uid}')">+ Ajouter un enfant</button>
+          <div style="margin-top:14px;">
+            <button class="btn btn-primary" onclick="sauverFicheAdmin('${uid}')">Enregistrer</button>
+            <button class="btn-small" onclick="fermerEdition('${uid}')">Annuler</button>
+          </div>
+        </div>
       </td>
     </tr>`;
   }
@@ -93,6 +190,51 @@ async function chargerFiches(){
 
 function toggleDetail(uid){
   document.getElementById("detail-" + uid).classList.toggle("open");
+}
+
+function ouvrirEdition(uid){
+  document.getElementById("vue-" + uid).style.display = "none";
+  document.getElementById("edit-" + uid).classList.add("open");
+}
+
+function fermerEdition(uid){
+  document.getElementById("vue-" + uid).style.display = "block";
+  document.getElementById("edit-" + uid).classList.remove("open");
+}
+
+function ajouterLigneEnfantEdit(uid){
+  const list = document.getElementById("ep-enfants-" + uid);
+  const row = document.createElement("div");
+  row.className = "enfant-row";
+  row.innerHTML = `
+    <div class="field"><label>Nom de l'enfant</label><input type="text" class="ep-enfant-nom" value=""></div>
+    <div class="field"><label>Date de naissance</label><input type="date" class="ep-enfant-date" value=""></div>
+    <button class="mini-btn" onclick="this.parentElement.remove()">Retirer</button>
+  `;
+  list.appendChild(row);
+}
+
+async function sauverFicheAdmin(uid){
+  const enfants = [...document.querySelectorAll("#ep-enfants-" + uid + " .enfant-row")].map(row => ({
+    nom: row.querySelector(".ep-enfant-nom").value.trim(),
+    dateNaissance: row.querySelector(".ep-enfant-date").value
+  })).filter(e => e.nom);
+
+  await db.collection("fiches").doc(uid).set({
+    parentNom: document.getElementById("ep-nom-" + uid).value.trim(),
+    parentTelephone: document.getElementById("ep-tel-" + uid).value.trim(),
+    parentEmail: document.getElementById("ep-email-" + uid).value.trim(),
+    parentAdresse: document.getElementById("ep-adresse-" + uid).value.trim(),
+    enfants
+  });
+  chargerFiches();
+}
+
+async function toggleArchive(uid, actifActuel){
+  const action = actifActuel ? "archiver" : "réactiver";
+  if(!confirm("Confirmer : " + action + " ce membre ?")) return;
+  await db.collection("users").doc(uid).update({ actif: !actifActuel });
+  chargerFiches();
 }
 
 chargerFiches();

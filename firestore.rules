@@ -5,7 +5,7 @@ rules_version = '2';
 // Ce fichier est tenu à jour à chaque nouvelle version du site (voir
 // le numéro de version en haut du fichier ci-dessous).
 // ===================================================================
-// Version correspondante du site : Isabelle V15
+// Version correspondante du site : Isabelle V17
 // ===================================================================
 
 service cloud.firestore {
@@ -51,8 +51,11 @@ service cloud.firestore {
       allow write: if isStaff();
     }
 
-    // ---------- suivi des membres (type de suivi + événement lié) ----------
-    // couvert par la règle /users/{uid} ci-dessus (mêmes documents)
+    // ---------- suivi des membres (plusieurs suivis possibles par membre) ----------
+    match /suivis/{id} {
+      allow read: if isStaff() || (isSignedIn() && resource.data.membreUid == request.auth.uid);
+      allow write: if isStaff();
+    }
 
     // ---------- comptabilité ----------
     match /factures/{id} {
@@ -74,6 +77,12 @@ service cloud.firestore {
 
     match /cloturesComptables/{id} {
       allow read: if isStaff();
+      allow write: if isStaff();
+    }
+
+    // contenu éditable des pages publiques — lisible par tous (site public), modifiable par le staff
+    match /site/{id} {
+      allow read: if true;
       allow write: if isStaff();
     }
 

@@ -46,7 +46,7 @@
       </a>
       <div class="contact-line">
         <span class="icon">📍</span>
-        <span><strong>Lieu des séances</strong><span>33 rue du Siège, 4530 Warnant-Dreye<br>peut varier selon les événements</span></span>
+        <span><strong>Lieu des séances</strong><span id="cms-contact-adresse">33 rue du Siège, 4530 Warnant-Dreye<br>peut varier selon les événements</span></span>
       </div>
       <p style="margin-top:20px; font-size:.9rem;">LudoThéraCoach — Isabelle Filleul, indépendante complémentaire.</p>
     </div>
@@ -65,8 +65,25 @@
 <footer>
   <div class="container">
     <span class="brand-text">Isabelle Filleul — LudoThéraCoach<span>Thérapie · Atelier des émotions · Formations</span></span>
+    <div class="footer-legal">
+      <a href="rgpd.html">Confidentialité (RGPD)</a> · <a href="cgv.html">Conditions générales</a>
+    </div>
+    <div class="footer-copyright">© 2026 LudoThéraCoach — Isabelle Filleul. Tous droits réservés.</div>
   </div>
 </footer>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+  try{
+    firebase.initializeApp(firebaseConfig);
+    firebase.firestore().collection("site").doc("contenu").get().then(doc => {
+      if(!doc.exists) return;
+      const c = doc.data();
+      if(c.contactAdresse) document.getElementById("cms-contact-adresse").innerHTML = c.contactAdresse.replace(/\n/g, "<br>");
+    });
+  }catch(e){}
+</script>
 </body>
 </html>

@@ -234,6 +234,9 @@ footer{
   border-top:1px solid rgba(42,39,51,.08);
 }
 footer .brand-text span{ justify-content:center; }
+.footer-legal{ margin-top:14px; font-size:.8rem; }
+.footer-legal a{ color:var(--ink-soft); text-decoration:underline; margin:0 8px; }
+.footer-copyright{ margin-top:6px; font-size:.78rem; color:var(--ink-soft); opacity:.8; }
 
 /* ---------- responsive ---------- */
 @media (max-width:860px){

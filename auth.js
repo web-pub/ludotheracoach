@@ -18,6 +18,12 @@ const ROLE_PAGES = {
   membre: "membre.html"
 };
 
+const ROLE_LABELS = {
+  superuser: "Super user",
+  admin: "Admin",
+  membre: "Membre"
+};
+
 function showMsg(el, text, type){
   el.textContent = text;
   el.className = "auth-msg " + type;
@@ -36,6 +42,11 @@ function initLoginPage(){
   const msg = document.getElementById("login-msg");
   const resetLink = document.getElementById("reset-link");
 
+  const params = new URLSearchParams(location.search);
+  if(params.get("archive") === "1"){
+    showMsg(msg, "Ce compte a été archivé. Contacte Isabelle ou le super user.", "error");
+  }
+
   if(form){
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -48,6 +59,11 @@ function initLoginPage(){
         const doc = await db.collection("users").doc(cred.user.uid).get();
         if(!doc.exists){
           showMsg(msg, "Compte connecté mais aucun rôle associé. Contacte le super user.", "error");
+          return;
+        }
+        if(doc.data().role === "membre" && doc.data().actif === false){
+          await auth.signOut();
+          showMsg(msg, "Ce compte a été archivé. Contacte Isabelle ou le super user.", "error");
           return;
         }
         const role = doc.data().role;
@@ -93,6 +109,12 @@ function guardRole(expectedRole){
     const doc = await db.collection("users").doc(user.uid).get();
     const role = doc.exists ? doc.data().role : null;
 
+    if(role === "membre" && doc.data().actif === false){
+      await auth.signOut();
+      window.location.href = "login.html?archive=1";
+      return;
+    }
+
     if(role !== expectedRole){
       // le super user peut aussi consulter les autres espaces pour vérification
       if(role === "superuser" && expectedRole !== "superuser"){
@@ -106,7 +128,7 @@ function guardRole(expectedRole){
       el.textContent = doc.exists ? (doc.data().nom || user.email) : user.email;
     });
     document.querySelectorAll("[data-user-role]").forEach(el => {
-      el.textContent = role;
+      el.textContent = ROLE_LABELS[role] || role;
       el.className = el.className.replace(/\b(super|admin|membre)\b/g, "") + " " + (role === "superuser" ? "super" : role);
     });
   });
@@ -129,12 +151,21 @@ function guardRoles(allowedRoles){
     if(!user){ window.location.href = "login.html"; return; }
     const doc = await db.collection("users").doc(user.uid).get();
     const role = doc.exists ? doc.data().role : null;
+    if(role === "membre" && doc.data().actif === false){
+      await auth.signOut();
+      window.location.href = "login.html?archive=1";
+      return;
+    }
     if(!allowedRoles.includes(role)){
       window.location.href = "login.html";
       return;
     }
     document.querySelectorAll("[data-user-name]").forEach(el => {
       el.textContent = doc.exists ? (doc.data().nom || user.email) : user.email;
+    });
+    document.querySelectorAll("[data-user-role]").forEach(el => {
+      el.textContent = ROLE_LABELS[role] || role;
+      el.className = el.className.replace(/\b(super|admin|membre)\b/g, "") + " " + (role === "superuser" ? "super" : role);
     });
   });
 }

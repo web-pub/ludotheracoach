@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contenu du site — LudoThéraCoach</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  textarea{ font-family:var(--body); font-size:.9rem; width:100%; min-height:90px; border:1.5px solid rgba(42,39,51,.14); border-radius:12px; padding:12px 14px; background:var(--bg); }
+</style>
+</head>
+<body>
+
+<div class="dash-header">
+  <div class="container">
+    <div class="dash-toprow">
+    <div class="who">
+      <span class="role-badge admin" data-user-role>Admin</span>
+      <span data-user-name>...</span>
+    </div>
+    <a href="#" class="logout-link" onclick="logoutUser()">Se déconnecter</a>
+    </div>
+    <nav class="dash-subnav">
+      <a href="admin.html">Tableau de bord</a>
+      <a href="fiches.html">Fiches membres</a>
+      <a href="disponibilites.html">Disponibilités</a>
+      <a href="evenements.html">Ateliers & formations</a>
+      <a href="suivi.html">Suivi membres</a>
+      <a href="compta.html">Comptabilité</a>
+      <a href="rdv-admin.html">Événements / RDV</a>
+      <a href="contenu.html">Contenu du site</a>
+    </nav>
+  </div>
+</div>
+
+<div class="dash-body">
+  <div class="container">
+
+    <div class="section-head">
+      <span class="eyebrow">site public</span>
+      <h2>Contenu du site</h2>
+      <p style="max-width:600px;">Modifie ici les textes affichés sur le site public — les changements sont visibles immédiatement, sans passer par un nouveau zip.</p>
+    </div>
+
+    <div id="contenu-msg" class="auth-msg"></div>
+
+    <div class="dash-card" style="margin-bottom:22px;">
+      <h3>Page Accueil</h3>
+      <div class="field"><label>Titre principal</label><input type="text" id="c-hero-titre"></div>
+      <div class="field"><label>Texte sous le titre</label><textarea id="c-hero-texte"></textarea></div>
+    </div>
+
+    <div class="dash-card" style="margin-bottom:22px;">
+      <h3>Page Activités</h3>
+      <div class="field"><label>Thérapie (individuel)</label><textarea id="c-act1"></textarea></div>
+      <div class="field"><label>Atelier des émotions (groupe)</label><textarea id="c-act2"></textarea></div>
+      <div class="field"><label>Formations</label><textarea id="c-act3"></textarea></div>
+    </div>
+
+    <div class="dash-card" style="margin-bottom:22px;">
+      <h3>Page Isabelle — présentation</h3>
+      <p style="font-size:.82rem;">Sépare les paragraphes par une ligne vide.</p>
+      <div class="field"><textarea id="c-bio" style="min-height:220px;"></textarea></div>
+    </div>
+
+    <div class="dash-card" style="margin-bottom:22px; max-width:460px;">
+      <h3>Page Contact</h3>
+      <div class="field"><label>Lieu des séances</label><textarea id="c-contact-adresse" style="min-height:70px;"></textarea></div>
+    </div>
+
+    <button class="btn btn-primary" onclick="sauverContenu()">Enregistrer tout</button>
+
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="auth.js"></script>
+<script>
+guardRole("admin");
+
+const DEFAUTS = {
+  heroTitre: "Apprivoiser ses émotions, un pas à la fois",
+  heroTexte: "Isabelle Filleul accompagne enfants et familles en séances individuelles, en ateliers des émotions en groupe, et propose des formations autour du vécu émotionnel des enfants.",
+  act1Texte: "Des séances individuelles pour accompagner l'enfant dans ce qu'il traverse : difficultés émotionnelles, événements de vie, périodes plus délicates. Un espace calme et sécurisant, rien qu'à lui.\n\nLe rythme et la fréquence des séances sont adaptés à chaque situation, en lien avec les parents.",
+  act2Texte: "Un atelier collectif où les enfants apprennent, en jouant, à reconnaître leurs émotions et celles des autres, à les nommer et à mieux les vivre au quotidien.\n\nLes groupes sont formés par tranche d'âge, avec un calendrier de séances communiqué à l'avance aux familles inscrites.",
+  act3Texte: "Des temps de formation destinés aux parents comme aux professionnels de l'enfance, pour mieux comprendre et accompagner le vécu émotionnel des enfants.\n\nLe lieu et les dates varient selon les sessions — le calendrier des prochaines formations est disponible sur simple demande.",
+  bioTexte: "Institutrice de formation, je travaille depuis 20 ans dans une école d'enseignement spécialisé. Maman d'un ado et en couple depuis 21 ans, je sais aussi ce que la vie peut mettre sur le chemin.\n\nComme beaucoup, je suis passée par de nombreuses épreuves — pertes, maladie, coups durs — et il m'a fallu du temps pour retrouver la lumière. Mais rien n'est dû au hasard : à un moment, un autre chemin s'est dessiné, et j'ai choisi de l'entreprendre. Ce chemin a donné naissance à LudoThéraCoach.\n\nJ'ai suivi une formation de 4 ans en tant que Thérapeute Co-créative avec Dominique de Thier. Passionnée de développement personnel, je continue aujourd'hui encore à me former à diverses méthodes.",
+  contactAdresse: "33 rue du Siège, 4530 Warnant-Dreye\npeut varier selon les événements"
+};
+
+async function chargerContenu(){
+  const doc = await db.collection("site").doc("contenu").get();
+  const c = doc.exists ? doc.data() : {};
+  document.getElementById("c-hero-titre").value = c.heroTitre || DEFAUTS.heroTitre;
+  document.getElementById("c-hero-texte").value = c.heroTexte || DEFAUTS.heroTexte;
+  document.getElementById("c-act1").value = c.act1Texte || DEFAUTS.act1Texte;
+  document.getElementById("c-act2").value = c.act2Texte || DEFAUTS.act2Texte;
+  document.getElementById("c-act3").value = c.act3Texte || DEFAUTS.act3Texte;
+  document.getElementById("c-bio").value = c.bioTexte || DEFAUTS.bioTexte;
+  document.getElementById("c-contact-adresse").value = c.contactAdresse || DEFAUTS.contactAdresse;
+}
+
+async function sauverContenu(){
+  await db.collection("site").doc("contenu").set({
+    heroTitre: document.getElementById("c-hero-titre").value.trim(),
+    heroTexte: document.getElementById("c-hero-texte").value.trim(),
+    act1Texte: document.getElementById("c-act1").value.trim(),
+    act2Texte: document.getElementById("c-act2").value.trim(),
+    act3Texte: document.getElementById("c-act3").value.trim(),
+    bioTexte: document.getElementById("c-bio").value.trim(),
+    contactAdresse: document.getElementById("c-contact-adresse").value.trim()
+  });
+  showMsg(document.getElementById("contenu-msg"), "Contenu enregistré — visible immédiatement sur le site.", "ok");
+}
+
+chargerContenu();
+</script>
+</body>
+</html>
