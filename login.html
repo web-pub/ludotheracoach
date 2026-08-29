@@ -28,27 +28,42 @@
   <div class="auth-card">
     <span class="eyebrow">espace privé</span>
     <h1>Connexion</h1>
-    <p style="font-size:.9rem; margin-bottom:20px;">Super user, admin ou membre : connecte-toi avec ton identifiant.</p>
 
     <div id="login-msg" class="auth-msg"></div>
 
     <form id="login-form">
       <div class="field">
         <label for="login-identifiant">Identifiant</label>
-        <input type="text" id="login-identifiant" required placeholder="ex. HeleneL">
+        <input type="text" id="login-identifiant" required placeholder="ex. marie.d">
       </div>
       <div class="field">
         <label for="login-password">Mot de passe</label>
-        <input type="password" id="login-password" required placeholder="••••••••">
+        <div style="position:relative;">
+          <input type="password" id="login-password" required placeholder="••••••••" style="width:100%; padding-right:44px;">
+          <button type="button" id="toggle-password" aria-label="Afficher le mot de passe"
+            style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:1.1rem; padding:4px;">👁️</button>
+        </div>
       </div>
       <button type="submit" class="btn btn-primary btn-block">Se connecter</button>
     </form>
+
+    <p style="font-size:.85rem; color:var(--ink-soft); margin-top:16px;">Connecte-toi avec les identifiants qui t'ont été communiqués.</p>
 
     <div class="auth-link">
       <a href="#" id="reset-link">Mot de passe oublié ?</a>
     </div>
   </div>
 </div>
+
+<script>
+  document.getElementById("toggle-password").addEventListener("click", function(){
+    const input = document.getElementById("login-password");
+    const showing = input.type === "text";
+    input.type = showing ? "password" : "text";
+    this.textContent = showing ? "👁️" : "🙈";
+    this.setAttribute("aria-label", showing ? "Afficher le mot de passe" : "Masquer le mot de passe");
+  });
+</script>
 
 <footer>
   <div class="container">

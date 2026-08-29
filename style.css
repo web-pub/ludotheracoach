@@ -126,6 +126,13 @@ nav.links a:hover, nav.links a.active{ background:var(--turquoise-lt); color:var
 
 .hero-visual{ position:relative; display:flex; justify-content:center; }
 .butterfly-stage{ width:100%; max-width:340px; aspect-ratio:1/1; }
+.hero-banner{
+  width:100%; max-width:420px;
+  aspect-ratio:3/2;
+  object-fit:cover;
+  border-radius:24px;
+  box-shadow:var(--shadow);
+}
 
 /* wing flutter — the one signature motion on the page */
 .wing-l, .wing-r{ transform-origin:50% 8%; animation:flutter 3.4s ease-in-out infinite; }
@@ -276,7 +283,8 @@ footer .brand-text span{ justify-content:center; }
   background:#fff; border-bottom:1px solid rgba(42,39,51,.08);
   padding:16px 0;
 }
-.dash-header .container{ display:flex; align-items:center; justify-content:space-between; }
+.dash-header .container{ display:block; }
+.dash-toprow{ display:flex; align-items:center; justify-content:space-between; }
 .dash-header .role-badge{
   font-size:.72rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
   padding:5px 12px; border-radius:100px;
@@ -314,3 +322,17 @@ footer .brand-text span{ justify-content:center; }
   font-size:.78rem; font-weight:600; padding:6px 12px; border-radius:100px;
   border:1.5px solid rgba(42,39,51,.14); background:#fff; cursor:pointer; text-decoration:none; color:var(--ink);
 }
+
+/* sous-navigation de l'espace privé (onglets), même esprit que le site des Cabots */
+.dash-subnav{
+  display:flex; gap:6px; flex-wrap:wrap;
+  padding-top:12px; margin-top:12px;
+  border-top:1px solid rgba(42,39,51,.08);
+}
+.dash-subnav a{
+  text-decoration:none; font-size:.83rem; font-weight:600;
+  color:var(--ink-soft); padding:8px 15px; border-radius:100px;
+  transition:background .18s, color .18s;
+}
+.dash-subnav a:hover{ background:var(--bg-soft); }
+.dash-subnav a.active{ background:var(--turquoise); color:#fff; }

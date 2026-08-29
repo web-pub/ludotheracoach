@@ -116,6 +116,13 @@ function logoutUser(){
   auth.signOut().then(() => window.location.href = "login.html");
 }
 
+document.addEventListener("DOMContentLoaded", () => {
+  const current = location.pathname.split("/").pop();
+  document.querySelectorAll(".dash-subnav a").forEach(a => {
+    if(a.getAttribute("href") === current) a.classList.add("active");
+  });
+});
+
 // ---------- protection multi-rôles (ex: page accessible à admin ET superuser) ----------
 function guardRoles(allowedRoles){
   auth.onAuthStateChanged(async (user) => {

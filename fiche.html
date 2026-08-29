@@ -14,11 +14,19 @@
 
 <div class="dash-header">
   <div class="container">
+    <div class="dash-toprow">
     <div class="who">
       <span class="role-badge membre" data-user-role>Membre</span>
       <span data-user-name>...</span>
     </div>
-    <a href="membre.html" class="logout-link">← Retour à mon espace</a>
+    <a href="#" class="logout-link" onclick="logoutUser()">Se déconnecter</a>
+    </div>
+    <nav class="dash-subnav">
+      <a href="membre.html">Mon espace</a>
+      <a href="fiche.html">Ma fiche</a>
+      <a href="calendrier.html">Mon calendrier</a>
+      <a href="rdv-membre.html">Événements / RDV</a>
+    </nav>
   </div>
 </div>
 

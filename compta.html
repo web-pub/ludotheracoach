@@ -28,11 +28,23 @@
 
 <div class="dash-header">
   <div class="container">
+    <div class="dash-toprow">
     <div class="who">
       <span class="role-badge admin" data-user-role>Admin</span>
       <span data-user-name>...</span>
     </div>
-    <a href="admin.html" class="logout-link">← Retour au tableau de bord</a>
+    <a href="#" class="logout-link" onclick="logoutUser()">Se déconnecter</a>
+    </div>
+    <nav class="dash-subnav">
+      <a href="admin.html">Tableau de bord</a>
+      <a href="fiches.html">Fiches membres</a>
+      <a href="disponibilites.html">Disponibilités</a>
+      <a href="evenements.html">Ateliers & formations</a>
+      <a href="suivi.html">Suivi membres</a>
+      <a href="compta.html">Comptabilité</a>
+      <a href="rdv-admin.html">Événements / RDV</a>
+      <a href="ajouter-membre.html">Ajouter un membre</a>
+    </nav>
   </div>
 </div>
 
@@ -52,16 +64,19 @@
     <div class="tabs">
       <button class="tab-btn active" data-tab="ventes">Factures de vente</button>
       <button class="tab-btn" data-tab="achats">Achats / Frais</button>
+      <button class="tab-btn" data-tab="pl">P&L simplifié</button>
       <button class="tab-btn" data-tab="coord">Coordonnées de facturation</button>
     </div>
 
     <!-- ===================== VENTES ===================== -->
     <div class="tab-panel active" id="tab-ventes">
 
+      <div id="ventes-cloture-banner"></div>
+
       <div class="inline-form">
         <div class="field">
           <label>Année</label>
-          <input type="number" id="ventes-annee" value="2026">
+          <input type="number" id="ventes-annee" value="2025" min="2025">
         </div>
         <div class="field">
           <label>Mois à générer</label>
@@ -72,7 +87,7 @@
             <option value="10">Octobre</option><option value="11">Novembre</option><option value="12">Décembre</option>
           </select>
         </div>
-        <button class="btn btn-primary" onclick="genererFacturesMois()">Générer les 3 factures du mois</button>
+        <button class="btn btn-primary" id="ventes-generer-btn" onclick="genererFacturesMois()">Générer les 3 factures du mois</button>
       </div>
       <div id="ventes-msg" class="auth-msg"></div>
 
@@ -80,31 +95,20 @@
         <thead><tr><th>N° facture</th><th>Mois</th><th>Catégorie</th><th>Montant (€)</th><th></th></tr></thead>
         <tbody id="ventes-table-body"><tr><td colspan="5">Chargement…</td></tr></tbody>
       </table>
+      <p id="ventes-total" style="font-weight:600; margin-top:14px;"></p>
     </div>
 
     <!-- ===================== ACHATS ===================== -->
     <div class="tab-panel" id="tab-achats">
 
-      <div class="section-head" style="margin-bottom:20px;">
-        <h3 style="font-family:var(--body); font-size:1rem; font-weight:700;">Catégories de frais</h3>
-      </div>
-      <table class="table" style="margin-bottom:22px;">
-        <thead><tr><th>Catégorie</th><th>% déductible</th><th></th></tr></thead>
-        <tbody id="categories-table-body"><tr><td colspan="3">Chargement…</td></tr></tbody>
-      </table>
-      <div class="inline-form">
-        <div class="field"><label>Nouvelle catégorie</label><input type="text" id="new-cat-nom" placeholder="ex. Électricité"></div>
-        <div class="field"><label>% déductible</label><input type="number" id="new-cat-pct" value="100" style="width:90px;"></div>
-        <button class="btn-small" onclick="ajouterCategorie()">Ajouter la catégorie</button>
-      </div>
-
-      <hr style="border:none; border-top:1px solid rgba(42,39,51,.1); margin:32px 0;">
+      <div id="achats-cloture-banner"></div>
 
       <div class="section-head" style="margin-bottom:20px;">
         <h3 style="font-family:var(--body); font-size:1rem; font-weight:700;">Dépenses</h3>
       </div>
+      <p style="font-size:.85rem; color:var(--ink-soft); margin-top:-10px;">Chaque dépense reçoit un <strong>numéro de pièce comptable</strong> — note-le sur le justificatif papier correspondant.</p>
       <div class="inline-form">
-        <div class="field"><label>Année</label><input type="number" id="achats-annee" value="2026" style="width:100px;"></div>
+        <div class="field"><label>Année</label><input type="number" id="achats-annee" value="2025" min="2025" style="width:100px;"></div>
         <div class="field"><label>Fournisseur</label><input type="text" id="new-dep-fournisseur" placeholder="ex. Delhaize"></div>
         <div class="field"><label>Montant TVAC (€)</label><input type="number" id="new-dep-montant" style="width:110px;"></div>
         <div class="field">
@@ -112,15 +116,79 @@
           <select id="new-dep-categorie"></select>
         </div>
         <div class="field"><label>Date</label><input type="date" id="new-dep-date"></div>
-        <button class="btn-small" onclick="ajouterDepense()">Ajouter la dépense</button>
+        <button class="btn-small" id="achats-ajouter-btn" onclick="ajouterDepense()">Ajouter la dépense</button>
       </div>
       <div id="achats-msg" class="auth-msg"></div>
 
       <table class="table">
-        <thead><tr><th>Date</th><th>Fournisseur</th><th>Catégorie</th><th>Montant TVAC</th><th>% déd.</th><th>Montant déductible</th><th></th></tr></thead>
-        <tbody id="depenses-table-body"><tr><td colspan="7">Chargement…</td></tr></tbody>
+        <thead><tr><th>N° pièce</th><th>Date</th><th>Fournisseur</th><th>Catégorie</th><th>Montant TVAC</th><th>% déd.</th><th>Montant déductible</th><th></th></tr></thead>
+        <tbody id="depenses-table-body"><tr><td colspan="8">Chargement…</td></tr></tbody>
       </table>
       <p id="achats-total" style="font-weight:600; margin-top:14px;"></p>
+
+      <details class="dash-card" style="margin-top:32px;">
+        <summary style="cursor:pointer; font-weight:700; font-size:.95rem;">⚙️ Catégories de frais (configuration — une fois réglée, tu n'y reviens quasi plus)</summary>
+        <div style="margin-top:18px;">
+          <table class="table" style="margin-bottom:22px;">
+            <thead><tr><th>Catégorie</th><th>% déductible</th><th></th></tr></thead>
+            <tbody id="categories-table-body"><tr><td colspan="3">Chargement…</td></tr></tbody>
+          </table>
+          <div class="inline-form" style="margin-bottom:0;">
+            <div class="field"><label>Nouvelle catégorie</label><input type="text" id="new-cat-nom" placeholder="ex. Électricité"></div>
+            <div class="field"><label>% déductible</label><input type="number" id="new-cat-pct" value="100" style="width:90px;"></div>
+            <button class="btn-small" onclick="ajouterCategorie()">Ajouter la catégorie</button>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <!-- ===================== P&L SIMPLIFIÉ ===================== -->
+    <div class="tab-panel" id="tab-pl">
+      <div class="note-box">
+        Vue simplifiée pour te donner une idée rapide de la santé de l'activité — ce n'est pas un compte de résultat officiel (pas de cotisations sociales, précompte, amortissements, etc.).
+      </div>
+      <div class="inline-form">
+        <div class="field"><label>Année</label><input type="number" id="pl-annee" value="2025" min="2025" style="width:100px;"></div>
+        <button class="btn-small" onclick="chargerPL()">Actualiser</button>
+      </div>
+
+      <div class="dash-card" id="cloture-card" style="max-width:460px; margin-bottom:28px; --accent:var(--ink);">
+        <h3>Statut de l'année</h3>
+        <p id="cloture-statut">—</p>
+        <div id="cloture-msg" class="auth-msg"></div>
+        <button class="btn-small" id="cloture-btn" onclick="toggleCloture()">—</button>
+      </div>
+
+      <div class="dash-cards" style="margin-bottom:28px;">
+        <div class="dash-card" style="--accent:var(--turquoise)">
+          <h3>Chiffre d'affaires</h3>
+          <p id="pl-ca" style="font-size:1.4rem; font-weight:700; color:var(--ink); margin-bottom:0;">—</p>
+        </div>
+        <div class="dash-card" style="--accent:var(--gold)">
+          <h3>Achats / frais (TVAC)</h3>
+          <p id="pl-achats" style="font-size:1.4rem; font-weight:700; color:var(--ink); margin-bottom:0;">—</p>
+        </div>
+        <div class="dash-card" style="--accent:var(--mauve)">
+          <h3>Résultat simplifié</h3>
+          <p id="pl-resultat" style="font-size:1.4rem; font-weight:700; color:var(--ink); margin-bottom:0;">—</p>
+        </div>
+      </div>
+
+      <div class="section-head" style="margin-bottom:14px;">
+        <h3 style="font-family:var(--body); font-size:1rem; font-weight:700;">Détail des ventes</h3>
+      </div>
+      <table class="table" style="margin-bottom:28px;">
+        <thead><tr><th>Catégorie</th><th>Montant</th></tr></thead>
+        <tbody id="pl-ventes-body"></tbody>
+      </table>
+
+      <div class="section-head" style="margin-bottom:14px;">
+        <h3 style="font-family:var(--body); font-size:1rem; font-weight:700;">Détail des achats / frais</h3>
+      </div>
+      <table class="table">
+        <thead><tr><th>Catégorie</th><th>Montant TVAC</th><th>Dont déductible</th></tr></thead>
+        <tbody id="pl-achats-body"></tbody>
+      </table>
     </div>
 
     <!-- ===================== COORDONNÉES ===================== -->
@@ -161,6 +229,84 @@ const MOIS_NOMS = ["", "Janvier","Février","Mars","Avril","Mai","Juin","Juillet
 const CATEGORIES_VENTE = ["Atelier", "Thérapeute", "Formation"];
 
 // =====================================================================
+// CLÔTURE D'ANNÉE COMPTABLE
+// =====================================================================
+
+async function estAnneeCloturee(annee){
+  const doc = await db.collection("cloturesComptables").doc(String(annee)).get();
+  return doc.exists && doc.data().cloturee === true;
+}
+
+function bannerCloture(dateCloture){
+  return `<div class="note-box" style="background:#FBE3BB; color:#8a5a10;">
+    🔒 Année clôturée le ${dateCloture} — lecture seule (déclaration IPP faite). Rouvre-la depuis l'onglet "P&L simplifié" si besoin de corriger.
+  </div>`;
+}
+
+async function appliquerVerrouVentes(annee){
+  const cloturee = await estAnneeCloturee(annee);
+  const banner = document.getElementById("ventes-cloture-banner");
+  const genererBtn = document.getElementById("ventes-generer-btn");
+  if(cloturee){
+    const doc = await db.collection("cloturesComptables").doc(String(annee)).get();
+    banner.innerHTML = bannerCloture(doc.data().dateCloture || "");
+    genererBtn.disabled = true;
+  } else {
+    banner.innerHTML = "";
+    genererBtn.disabled = false;
+  }
+  return cloturee;
+}
+
+async function appliquerVerrouAchats(annee){
+  const cloturee = await estAnneeCloturee(annee);
+  const banner = document.getElementById("achats-cloture-banner");
+  const ajouterBtn = document.getElementById("achats-ajouter-btn");
+  if(cloturee){
+    const doc = await db.collection("cloturesComptables").doc(String(annee)).get();
+    banner.innerHTML = bannerCloture(doc.data().dateCloture || "");
+    ajouterBtn.disabled = true;
+  } else {
+    banner.innerHTML = "";
+    ajouterBtn.disabled = false;
+  }
+  return cloturee;
+}
+
+async function chargerStatutCloture(){
+  const annee = parseInt(document.getElementById("pl-annee").value) || 2025;
+  const cloturee = await estAnneeCloturee(annee);
+  const statutEl = document.getElementById("cloture-statut");
+  const btn = document.getElementById("cloture-btn");
+  if(cloturee){
+    statutEl.textContent = "Année " + annee + " : clôturée 🔒";
+    btn.textContent = "Rouvrir cette année";
+  } else {
+    statutEl.textContent = "Année " + annee + " : ouverte, en cours d'encodage";
+    btn.textContent = "Clôturer cette année";
+  }
+}
+
+async function toggleCloture(){
+  const annee = parseInt(document.getElementById("pl-annee").value) || 2025;
+  const msg = document.getElementById("cloture-msg");
+  const cloturee = await estAnneeCloturee(annee);
+
+  if(!cloturee){
+    if(!confirm("Clôturer l'année " + annee + " ? Plus aucune facture ou dépense ne pourra être ajoutée/modifiée pour cette année tant qu'elle n'est pas rouverte.")) return;
+    await db.collection("cloturesComptables").doc(String(annee)).set({ cloturee: true, dateCloture: new Date().toLocaleDateString("fr-BE") });
+    showMsg(msg, "Année " + annee + " clôturée.", "ok");
+  } else {
+    if(!confirm("Rouvrir l'année " + annee + " pour correction ?")) return;
+    await db.collection("cloturesComptables").doc(String(annee)).set({ cloturee: false });
+    showMsg(msg, "Année " + annee + " rouverte.", "ok");
+  }
+  chargerStatutCloture();
+}
+
+document.getElementById("pl-annee").addEventListener("change", chargerStatutCloture);
+
+// =====================================================================
 // FACTURES DE VENTE — pas de TVA, numérotation continue "AAAA NNN"
 // =====================================================================
 
@@ -168,6 +314,11 @@ async function genererFacturesMois(){
   const msg = document.getElementById("ventes-msg");
   const annee = parseInt(document.getElementById("ventes-annee").value);
   const mois = parseInt(document.getElementById("ventes-mois").value);
+
+  if(await estAnneeCloturee(annee)){
+    showMsg(msg, "Cette année est clôturée — rouvre-la depuis l'onglet P&L pour pouvoir générer des factures.", "error");
+    return;
+  }
 
   const existant = await db.collection("factures").where("annee","==",annee).where("mois","==",mois).get();
   if(!existant.empty){
@@ -192,26 +343,32 @@ async function genererFacturesMois(){
 }
 
 async function chargerFactures(){
-  const annee = parseInt(document.getElementById("ventes-annee").value) || 2026;
+  const annee = parseInt(document.getElementById("ventes-annee").value) || 2025;
+  const cloturee = await appliquerVerrouVentes(annee);
   const body = document.getElementById("ventes-table-body");
+  const totalEl = document.getElementById("ventes-total");
   const snap = await db.collection("factures").where("annee","==",annee).orderBy("numero").get();
-  if(snap.empty){ body.innerHTML = "<tr><td colspan='5'>Aucune facture pour " + annee + ".</td></tr>"; return; }
+  if(snap.empty){ body.innerHTML = "<tr><td colspan='5'>Aucune facture pour " + annee + ".</td></tr>"; totalEl.textContent = ""; return; }
   body.innerHTML = "";
+  let total = 0;
   snap.forEach(doc => {
     const f = doc.data();
+    total += f.montant || 0;
     const numeroAffiche = annee + " " + String(f.numero).padStart(3,"0");
     body.innerHTML += `<tr>
       <td>${numeroAffiche}</td>
       <td>${MOIS_NOMS[f.mois]}</td>
       <td>${f.categorie}</td>
-      <td><input class="montant" type="number" step="0.01" value="${f.montant}" onchange="majMontantFacture('${doc.id}', this.value)"></td>
+      <td><input class="montant" type="number" step="0.01" value="${f.montant}" ${cloturee ? "disabled" : ""} onchange="majMontantFacture('${doc.id}', this.value)"></td>
       <td><button class="mini-btn" onclick="voirFacture('${doc.id}')">Aperçu</button></td>
     </tr>`;
   });
+  totalEl.textContent = "Total ventes " + annee + " : " + total.toFixed(2) + " €";
 }
 
 async function majMontantFacture(id, valeur){
   await db.collection("factures").doc(id).update({ montant: parseFloat(valeur) || 0 });
+  chargerFactures();
 }
 
 async function voirFacture(id){
@@ -278,7 +435,8 @@ async function chargerCategories(){
 
 async function majCategorie(id, pct){
   await db.collection("fraisCategories").doc(id).update({ deductibilite: parseFloat(pct) || 0 });
-  chargerDepenses();
+  await chargerCategories();
+  await chargerDepenses();
 }
 
 async function ajouterCategorie(){
@@ -292,7 +450,7 @@ async function ajouterCategorie(){
 
 async function ajouterDepense(){
   const msg = document.getElementById("achats-msg");
-  const annee = parseInt(document.getElementById("achats-annee").value) || 2026;
+  const annee = parseInt(document.getElementById("achats-annee").value) || 2025;
   const fournisseur = document.getElementById("new-dep-fournisseur").value.trim();
   const montant = parseFloat(document.getElementById("new-dep-montant").value);
   const categorieId = document.getElementById("new-dep-categorie").value;
@@ -301,22 +459,34 @@ async function ajouterDepense(){
     showMsg(msg, "Complète fournisseur, montant et catégorie.", "error");
     return;
   }
-  await db.collection("depenses").add({ annee, fournisseur, montantTVAC: montant, categorieId, date });
+  if(await estAnneeCloturee(annee)){
+    showMsg(msg, "Cette année est clôturée — rouvre-la depuis l'onglet P&L pour ajouter une dépense.", "error");
+    return;
+  }
+
+  // numéro de pièce comptable séquentiel pour l'année (à noter sur le justificatif papier)
+  const snapAnnee = await db.collection("depenses").where("annee","==",annee).get();
+  let dernierNumero = 0;
+  snapAnnee.forEach(d => { if((d.data().numeroPiece || 0) > dernierNumero) dernierNumero = d.data().numeroPiece; });
+  const numeroPiece = dernierNumero + 1;
+
+  await db.collection("depenses").add({ annee, fournisseur, montantTVAC: montant, categorieId, date, numeroPiece });
   document.getElementById("new-dep-fournisseur").value = "";
   document.getElementById("new-dep-montant").value = "";
-  showMsg(msg, "Dépense ajoutée.", "ok");
+  showMsg(msg, "Dépense ajoutée — numéro de pièce à noter sur le justificatif : " + annee + " D" + String(numeroPiece).padStart(3,"0"), "ok");
   chargerDepenses();
 }
 
 async function chargerDepenses(){
-  const annee = parseInt(document.getElementById("achats-annee").value) || 2026;
+  const annee = parseInt(document.getElementById("achats-annee").value) || 2025;
+  const cloturee = await appliquerVerrouAchats(annee);
   const catSnap = await db.collection("fraisCategories").get();
   const categories = {};
   catSnap.forEach(d => categories[d.id] = d.data());
 
-  const snap = await db.collection("depenses").where("annee","==",annee).get();
+  const snap = await db.collection("depenses").where("annee","==",annee).orderBy("numeroPiece").get();
   const body = document.getElementById("depenses-table-body");
-  if(snap.empty){ body.innerHTML = "<tr><td colspan='7'>Aucune dépense pour " + annee + ".</td></tr>"; document.getElementById("achats-total").textContent=""; return; }
+  if(snap.empty){ body.innerHTML = "<tr><td colspan='8'>Aucune dépense pour " + annee + ".</td></tr>"; document.getElementById("achats-total").textContent=""; return; }
   body.innerHTML = "";
   let total = 0, totalDeductible = 0;
   snap.forEach(doc => {
@@ -324,14 +494,16 @@ async function chargerDepenses(){
     const cat = categories[d.categorieId] || { nom: "?", deductibilite: 0 };
     const deductible = d.montantTVAC * (cat.deductibilite/100);
     total += d.montantTVAC; totalDeductible += deductible;
+    const numeroAffiche = d.numeroPiece ? (annee + " D" + String(d.numeroPiece).padStart(3,"0")) : "—";
     body.innerHTML += `<tr>
+      <td><strong>${numeroAffiche}</strong></td>
       <td>${d.date || "—"}</td>
       <td>${d.fournisseur}</td>
       <td>${cat.nom}</td>
       <td>${d.montantTVAC.toFixed(2)} €</td>
       <td>${cat.deductibilite}%</td>
       <td>${deductible.toFixed(2)} €</td>
-      <td><button class="mini-btn" onclick="supprimerDepense('${doc.id}')">Supprimer</button></td>
+      <td>${cloturee ? "" : `<button class="mini-btn" onclick="supprimerDepense('${doc.id}')">Supprimer</button>`}</td>
     </tr>`;
   });
   document.getElementById("achats-total").textContent =
@@ -342,6 +514,65 @@ async function supprimerDepense(id){
   await db.collection("depenses").doc(id).delete();
   chargerDepenses();
 }
+
+// =====================================================================
+// P&L SIMPLIFIÉ
+// =====================================================================
+
+async function chargerPL(){
+  const annee = parseInt(document.getElementById("pl-annee").value) || 2026;
+
+  const [facturesSnap, depensesSnap, catSnap] = await Promise.all([
+    db.collection("factures").where("annee","==",annee).get(),
+    db.collection("depenses").where("annee","==",annee).get(),
+    db.collection("fraisCategories").get()
+  ]);
+
+  // ventes par catégorie
+  const ventesParCat = {};
+  let totalVentes = 0;
+  facturesSnap.forEach(doc => {
+    const f = doc.data();
+    ventesParCat[f.categorie] = (ventesParCat[f.categorie] || 0) + (f.montant || 0);
+    totalVentes += f.montant || 0;
+  });
+
+  // achats par catégorie
+  const categories = {};
+  catSnap.forEach(d => categories[d.id] = d.data());
+  const achatsParCat = {};
+  let totalAchats = 0, totalDeductible = 0;
+  depensesSnap.forEach(doc => {
+    const d = doc.data();
+    const cat = categories[d.categorieId] || { nom: "Autre", deductibilite: 0 };
+    if(!achatsParCat[cat.nom]) achatsParCat[cat.nom] = { montant: 0, deductible: 0 };
+    achatsParCat[cat.nom].montant += d.montantTVAC || 0;
+    achatsParCat[cat.nom].deductible += (d.montantTVAC || 0) * (cat.deductibilite/100);
+    totalAchats += d.montantTVAC || 0;
+    totalDeductible += (d.montantTVAC || 0) * (cat.deductibilite/100);
+  });
+
+  document.getElementById("pl-ca").textContent = totalVentes.toFixed(2) + " €";
+  document.getElementById("pl-achats").textContent = totalAchats.toFixed(2) + " €";
+  const resultat = totalVentes - totalAchats;
+  const resultatEl = document.getElementById("pl-resultat");
+  resultatEl.textContent = resultat.toFixed(2) + " €";
+  resultatEl.style.color = resultat >= 0 ? "var(--turquoise-dk)" : "#9B3A2E";
+
+  const ventesBody = document.getElementById("pl-ventes-body");
+  ventesBody.innerHTML = CATEGORIES_VENTE.map(cat =>
+    `<tr><td>${cat}</td><td>${(ventesParCat[cat] || 0).toFixed(2)} €</td></tr>`
+  ).join("") + `<tr style="font-weight:700;"><td>Total</td><td>${totalVentes.toFixed(2)} €</td></tr>`;
+
+  const achatsBody = document.getElementById("pl-achats-body");
+  const lignesAchats = Object.entries(achatsParCat).map(([nom, v]) =>
+    `<tr><td>${nom}</td><td>${v.montant.toFixed(2)} €</td><td>${v.deductible.toFixed(2)} €</td></tr>`
+  ).join("");
+  achatsBody.innerHTML = (lignesAchats || "<tr><td colspan='3'>Aucune dépense enregistrée.</td></tr>") +
+    `<tr style="font-weight:700;"><td>Total</td><td>${totalAchats.toFixed(2)} €</td><td>${totalDeductible.toFixed(2)} €</td></tr>`;
+}
+
+document.getElementById("pl-annee").addEventListener("change", chargerPL);
 
 // =====================================================================
 // COORDONNÉES DE FACTURATION
@@ -375,6 +606,8 @@ document.getElementById("achats-annee").addEventListener("change", chargerDepens
 chargerFactures();
 chargerCategories().then(chargerDepenses);
 chargerCoordonnees();
+chargerPL();
+chargerStatutCloture();
 </script>
 </body>
 </html>

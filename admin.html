@@ -10,12 +10,24 @@
 
 <div class="dash-header">
   <div class="container">
+    <div class="dash-toprow">
     <div class="who">
       <span class="role-badge admin" data-user-role>Admin</span>
       <span data-user-name>...</span>
       <span class="version-tag" id="version-tag"></span>
     </div>
     <a href="#" class="logout-link" onclick="logoutUser()">Se déconnecter</a>
+    </div>
+    <nav class="dash-subnav">
+      <a href="admin.html">Tableau de bord</a>
+      <a href="fiches.html">Fiches membres</a>
+      <a href="disponibilites.html">Disponibilités</a>
+      <a href="evenements.html">Ateliers & formations</a>
+      <a href="suivi.html">Suivi membres</a>
+      <a href="compta.html">Comptabilité</a>
+      <a href="rdv-admin.html">Événements / RDV</a>
+      <a href="ajouter-membre.html">Ajouter un membre</a>
+    </nav>
   </div>
 </div>
 
@@ -28,6 +40,16 @@
     </div>
 
     <div class="dash-cards">
+      <div class="dash-card" style="--accent:var(--gold)">
+        <h3>Ajouter un membre</h3>
+        <p>Créer un compte de connexion pour une nouvelle famille, directement depuis le site.</p>
+        <a href="ajouter-membre.html" class="btn-small">Créer un compte membre →</a>
+      </div>
+      <div class="dash-card" style="--accent:var(--mauve)">
+        <h3>Événements / RDV</h3>
+        <p>Créer des RDV avec prix par personne, suivre les réservations et les paiements.</p>
+        <a href="rdv-admin.html" class="btn-small">Ouvrir →</a>
+      </div>
       <div class="dash-card" style="--accent:var(--turquoise)">
         <h3>Fiches membres</h3>
         <p>Coordonnées des parents et des enfants suivis (plusieurs enfants possibles par famille).</p>
@@ -50,18 +72,8 @@
       </div>
       <div class="dash-card" style="--accent:var(--turquoise-dk)">
         <h3>Comptabilité</h3>
-        <p>3 factures mensuelles (atelier / thérapie / formation), numérotées 2026 001, 002… + suivi des achats/frais.</p>
+        <p>Factures de vente sans TVA, achats/frais déductibles et un P&L simplifié pour voir où en est l'activité.</p>
         <a href="compta.html" class="btn-small">Ouvrir →</a>
-      </div>
-      <div class="dash-card" style="--accent:var(--gold)">
-        <h3>Ajouter un membre</h3>
-        <p>Créer un compte de connexion pour une nouvelle famille, directement depuis le site.</p>
-        <a href="ajouter-membre.html" class="btn-small">Ouvrir →</a>
-      </div>
-      <div class="dash-card" style="--accent:var(--mauve)">
-        <h3>Événements / RDV</h3>
-        <p>Créer des RDV avec prix par personne, suivre les réservations et les paiements.</p>
-        <a href="rdv-admin.html" class="btn-small">Ouvrir →</a>
       </div>
     </div>
 
@@ -90,14 +102,15 @@ document.getElementById("version-tag").textContent = SITE_VERSION;
 
 db.collection("users").get().then(snap => {
   const body = document.getElementById("users-table-body");
-  if(snap.empty){
+  const docs = snap.docs.filter(doc => doc.data().role !== "superuser");
+  if(docs.length === 0){
     body.innerHTML = "<tr><td colspan='3'>Aucun utilisateur pour l'instant.</td></tr>";
     return;
   }
   body.innerHTML = "";
-  snap.forEach(doc => {
+  docs.forEach(doc => {
     const u = doc.data();
-    const pillClass = u.role === "superuser" ? "super" : (u.role || "membre");
+    const pillClass = u.role || "membre";
     body.innerHTML += `<tr><td>${u.nom || "—"}</td><td>${u.identifiant || "—"}</td><td><span class="pill ${pillClass}">${u.role || "?"}</span></td></tr>`;
   });
 }).catch(() => {
