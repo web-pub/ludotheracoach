@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Espace Membre — LudoThéraCoach</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="dash-header">
+  <div class="container">
+    <div class="who">
+      <span class="role-badge membre" data-user-role>Membre</span>
+      <span data-user-name>...</span>
+    </div>
+    <a href="#" class="logout-link" onclick="logoutUser()">Se déconnecter</a>
+  </div>
+</div>
+
+<div class="dash-body">
+  <div class="container">
+
+    <div class="section-head">
+      <span class="eyebrow">bienvenue</span>
+      <h2>Ton espace</h2>
+    </div>
+
+    <div class="dash-cards">
+      <div class="dash-card" style="--accent:var(--turquoise)">
+        <h3>Ma fiche</h3>
+        <p>Compléter tes coordonnées et celles de ton ou tes enfants suivis.</p>
+        <a href="fiche.html" class="btn-small">Ouvrir →</a>
+      </div>
+      <div class="dash-card" style="--accent:var(--gold)">
+        <h3>Mon calendrier</h3>
+        <p>Selon ton suivi : thérapie individuelle, atelier des émotions en groupe, ou formation.</p>
+        <a href="calendrier.html" class="btn-small">Ouvrir →</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="auth.js"></script>
+<script>guardRole("membre");</script>
+</body>
+</html>

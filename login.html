@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Connexion — LudoThéraCoach</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <div class="nav">
+    <a href="index.html" class="brand">
+      <svg viewBox="0 0 32 32"><path d="M16 8c-3 0-6 3-7 7 0 3 3 4 7 2 4 2 7 1 7-2-1-4-4-7-7-7Z" style="fill:var(--gold)"/><rect x="14.5" y="8" width="3" height="14" rx="1.5" style="fill:var(--ink)"/></svg>
+      <span class="brand-text">Isabelle Filleul<span>LudoThéraCoach</span></span>
+    </a>
+    <nav class="links">
+      <a href="index.html">Accueil</a>
+      <a href="isabelle.html">Isabelle</a>
+      <a href="activites.html">Activités</a>
+      <a href="contact.html">Contact</a>
+    </nav>
+    <a href="login.html" class="nav-cta">Espace privé</a>
+  </div>
+</header>
+
+<div class="auth-wrap">
+  <div class="auth-card">
+    <span class="eyebrow">espace privé</span>
+    <h1>Connexion</h1>
+    <p style="font-size:.9rem; margin-bottom:20px;">Super user, admin ou membre : connecte-toi avec ton identifiant.</p>
+
+    <div id="login-msg" class="auth-msg"></div>
+
+    <form id="login-form">
+      <div class="field">
+        <label for="login-email">E-mail</label>
+        <input type="email" id="login-email" required placeholder="ton@email.be">
+      </div>
+      <div class="field">
+        <label for="login-password">Mot de passe</label>
+        <input type="password" id="login-password" required placeholder="••••••••">
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Se connecter</button>
+    </form>
+
+    <div class="auth-link">
+      <a href="#" id="reset-link">Mot de passe oublié ?</a>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="container">
+    <span class="brand-text">Isabelle Filleul — LudoThéraCoach<span>Thérapie · Atelier des émotions · Formations</span></span>
+  </div>
+</footer>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="auth.js"></script>
+<script>initLoginPage();</script>
+</body>
+</html>

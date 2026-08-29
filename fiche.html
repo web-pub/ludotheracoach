@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ma fiche — LudoThéraCoach</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .enfant-row{ display:flex; gap:10px; align-items:end; margin-bottom:12px; }
+  .enfant-row .field{ margin-bottom:0; flex:1; }
+</style>
+</head>
+<body>
+
+<div class="dash-header">
+  <div class="container">
+    <div class="who">
+      <span class="role-badge membre" data-user-role>Membre</span>
+      <span data-user-name>...</span>
+    </div>
+    <a href="membre.html" class="logout-link">← Retour à mon espace</a>
+  </div>
+</div>
+
+<div class="dash-body">
+  <div class="container">
+
+    <div class="section-head">
+      <span class="eyebrow">mes informations</span>
+      <h2>Ma fiche</h2>
+      <p style="max-width:560px;">Coordonnées du parent et informations sur le ou les enfants suivis. Tu peux ajouter plusieurs enfants.</p>
+    </div>
+
+    <div id="fiche-msg" class="auth-msg"></div>
+
+    <div class="dash-card" style="max-width:560px; margin-bottom:28px;">
+      <h3>Coordonnées du parent</h3>
+      <div class="field"><label>Nom et prénom</label><input type="text" id="parent-nom"></div>
+      <div class="field"><label>Téléphone</label><input type="tel" id="parent-tel"></div>
+      <div class="field"><label>E-mail</label><input type="email" id="parent-email"></div>
+      <div class="field"><label>Adresse</label><input type="text" id="parent-adresse"></div>
+    </div>
+
+    <div class="dash-card" style="max-width:560px; margin-bottom:28px;">
+      <h3>Enfant(s) suivi(s)</h3>
+      <div id="enfants-list"></div>
+      <button class="btn-small" onclick="ajouterLigneEnfant()">+ Ajouter un enfant</button>
+    </div>
+
+    <button class="btn btn-primary" onclick="sauverFiche()">Enregistrer ma fiche</button>
+
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="auth.js"></script>
+<script>
+guardRole("membre");
+
+let currentUid = null;
+
+function ajouterLigneEnfant(nom="", dateNaissance=""){
+  const list = document.getElementById("enfants-list");
+  const row = document.createElement("div");
+  row.className = "enfant-row";
+  row.innerHTML = `
+    <div class="field"><label>Nom de l'enfant</label><input type="text" class="enfant-nom" value="${nom}"></div>
+    <div class="field"><label>Date de naissance</label><input type="date" class="enfant-date" value="${dateNaissance}"></div>
+    <button class="btn-small" onclick="this.parentElement.remove()">Retirer</button>
+  `;
+  list.appendChild(row);
+}
+
+auth.onAuthStateChanged(async (user) => {
+  if(!user) return;
+  currentUid = user.uid;
+  const doc = await db.collection("fiches").doc(user.uid).get();
+  if(doc.exists){
+    const f = doc.data();
+    document.getElementById("parent-nom").value = f.parentNom || "";
+    document.getElementById("parent-tel").value = f.parentTelephone || "";
+    document.getElementById("parent-email").value = f.parentEmail || "";
+    document.getElementById("parent-adresse").value = f.parentAdresse || "";
+    (f.enfants || []).forEach(e => ajouterLigneEnfant(e.nom, e.dateNaissance));
+  }
+  if(document.getElementById("enfants-list").children.length === 0) ajouterLigneEnfant();
+});
+
+async function sauverFiche(){
+  const msg = document.getElementById("fiche-msg");
+  const enfants = [...document.querySelectorAll(".enfant-row")].map(row => ({
+    nom: row.querySelector(".enfant-nom").value.trim(),
+    dateNaissance: row.querySelector(".enfant-date").value
+  })).filter(e => e.nom);
+
+  await db.collection("fiches").doc(currentUid).set({
+    parentNom: document.getElementById("parent-nom").value.trim(),
+    parentTelephone: document.getElementById("parent-tel").value.trim(),
+    parentEmail: document.getElementById("parent-email").value.trim(),
+    parentAdresse: document.getElementById("parent-adresse").value.trim(),
+    enfants
+  });
+  showMsg(msg, "Fiche enregistrée.", "ok");
+}
+</script>
+</body>
+</html>

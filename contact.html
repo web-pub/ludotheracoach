@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact — LudoThéraCoach</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <div class="nav">
+    <a href="index.html" class="brand">
+      <svg viewBox="0 0 32 32"><path d="M16 8c-3 0-6 3-7 7 0 3 3 4 7 2 4 2 7 1 7-2-1-4-4-7-7-7Z" style="fill:var(--gold)"/><rect x="14.5" y="8" width="3" height="14" rx="1.5" style="fill:var(--ink)"/></svg>
+      <span class="brand-text">Isabelle Filleul<span>LudoThéraCoach</span></span>
+    </a>
+    <nav class="links">
+      <a href="index.html">Accueil</a>
+      <a href="isabelle.html">Isabelle</a>
+      <a href="activites.html">Activités</a>
+      <a href="contact.html" class="active">Contact</a>
+    </nav>
+    <a href="login.html" class="nav-cta">Espace privé</a>
+  </div>
+</header>
+
+<section class="hero" style="padding-bottom:30px;">
+  <div class="container">
+    <span class="eyebrow">on en parle ?</span>
+    <h1>Contact</h1>
+    <p style="max-width:600px;">Une question, une envie de prendre rendez-vous ou de connaître les prochaines dates d'atelier ? Isabelle vous répond avec plaisir.</p>
+  </div>
+</section>
+
+<section class="section-alt">
+  <div class="container contact-grid">
+    <div class="contact-card">
+      <h2 style="font-size:1.3rem;">Coordonnées</h2>
+      <a class="contact-line" href="tel:+32000000000">
+        <span class="icon">📞</span>
+        <span><strong>Téléphone</strong><span>à compléter</span></span>
+      </a>
+      <a class="contact-line" href="mailto:contact@ludotheracoach.be">
+        <span class="icon">✉️</span>
+        <span><strong>E-mail</strong><span>contact@ludotheracoach.be</span></span>
+      </a>
+      <div class="contact-line">
+        <span class="icon">📍</span>
+        <span><strong>Lieu des séances</strong><span>adresse à compléter</span></span>
+      </div>
+      <p style="margin-top:20px; font-size:.9rem;">LudoThéraCoach — Isabelle Filleul, indépendante complémentaire.</p>
+    </div>
+    <div class="contact-card">
+      <h2 style="font-size:1.3rem;">Envoyer un message</h2>
+      <form class="contact-form" onsubmit="event.preventDefault(); alert('Merci, votre message a bien été envoyé !');">
+        <input type="text" placeholder="Votre nom" required>
+        <input type="email" placeholder="Votre e-mail" required>
+        <textarea placeholder="Votre message" required></textarea>
+        <button type="submit" class="btn btn-primary">Envoyer</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <span class="brand-text">Isabelle Filleul — LudoThéraCoach<span>Thérapie · Atelier des émotions · Formations</span></span>
+  </div>
+</footer>
+
+</body>
+</html>

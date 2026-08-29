@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comptabilité — LudoThéraCoach</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .tabs{ display:flex; gap:8px; margin-bottom:28px; flex-wrap:wrap; }
+  .tab-btn{
+    border:1.5px solid rgba(42,39,51,.14); background:#fff; cursor:pointer;
+    padding:10px 18px; border-radius:100px; font-family:var(--body); font-size:.9rem; font-weight:600; color:var(--ink-soft);
+  }
+  .tab-btn.active{ background:var(--turquoise); color:#fff; border-color:var(--turquoise); }
+  .tab-panel{ display:none; }
+  .tab-panel.active{ display:block; }
+  .inline-form{ display:flex; gap:10px; flex-wrap:wrap; align-items:end; margin-bottom:22px; }
+  .inline-form .field{ margin-bottom:0; min-width:150px; }
+  .note-box{
+    background:var(--turquoise-lt); color:var(--turquoise-dk); font-size:.85rem;
+    padding:14px 18px; border-radius:12px; margin-bottom:24px;
+  }
+  input.montant{ width:110px; text-align:right; }
+  .mini-btn{ background:none; border:none; cursor:pointer; color:var(--turquoise-dk); font-size:.85rem; font-weight:600; }
+</style>
+</head>
+<body>
+
+<div class="dash-header">
+  <div class="container">
+    <div class="who">
+      <span class="role-badge admin" data-user-role>Admin</span>
+      <span data-user-name>...</span>
+    </div>
+    <a href="admin.html" class="logout-link">← Retour au tableau de bord</a>
+  </div>
+</div>
+
+<div class="dash-body">
+  <div class="container">
+
+    <div class="section-head">
+      <span class="eyebrow">gestion financière</span>
+      <h2>Comptabilité</h2>
+    </div>
+
+    <div class="note-box">
+      Isabelle n'est <strong>pas assujettie à la TVA</strong> — aucune mention de TVA n'apparaît sur les factures.
+      Seuls les coordonnées et le numéro d'entreprise sont indiqués.
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="ventes">Factures de vente</button>
+      <button class="tab-btn" data-tab="achats">Achats / Frais</button>
+      <button class="tab-btn" data-tab="coord">Coordonnées de facturation</button>
+    </div>
+
+    <!-- ===================== VENTES ===================== -->
+    <div class="tab-panel active" id="tab-ventes">
+
+      <div class="inline-form">
+        <div class="field">
+          <label>Année</label>
+          <input type="number" id="ventes-annee" value="2026">
+        </div>
+        <div class="field">
+          <label>Mois à générer</label>
+          <select id="ventes-mois">
+            <option value="1">Janvier</option><option value="2">Février</option><option value="3">Mars</option>
+            <option value="4">Avril</option><option value="5">Mai</option><option value="6">Juin</option>
+            <option value="7">Juillet</option><option value="8">Août</option><option value="9">Septembre</option>
+            <option value="10">Octobre</option><option value="11">Novembre</option><option value="12">Décembre</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="genererFacturesMois()">Générer les 3 factures du mois</button>
+      </div>
+      <div id="ventes-msg" class="auth-msg"></div>
+
+      <table class="table">
+        <thead><tr><th>N° facture</th><th>Mois</th><th>Catégorie</th><th>Montant (€)</th><th></th></tr></thead>
+        <tbody id="ventes-table-body"><tr><td colspan="5">Chargement…</td></tr></tbody>
+      </table>
+    </div>
+
+    <!-- ===================== ACHATS ===================== -->
+    <div class="tab-panel" id="tab-achats">
+
+      <div class="section-head" style="margin-bottom:20px;">
+        <h3 style="font-family:var(--body); font-size:1rem; font-weight:700;">Catégories de frais</h3>
+      </div>
+      <table class="table" style="margin-bottom:22px;">
+        <thead><tr><th>Catégorie</th><th>% déductible</th><th></th></tr></thead>
+        <tbody id="categories-table-body"><tr><td colspan="3">Chargement…</td></tr></tbody>
+      </table>
+      <div class="inline-form">
+        <div class="field"><label>Nouvelle catégorie</label><input type="text" id="new-cat-nom" placeholder="ex. Électricité"></div>
+        <div class="field"><label>% déductible</label><input type="number" id="new-cat-pct" value="100" style="width:90px;"></div>
+        <button class="btn-small" onclick="ajouterCategorie()">Ajouter la catégorie</button>
+      </div>
+
+      <hr style="border:none; border-top:1px solid rgba(42,39,51,.1); margin:32px 0;">
+
+      <div class="section-head" style="margin-bottom:20px;">
+        <h3 style="font-family:var(--body); font-size:1rem; font-weight:700;">Dépenses</h3>
+      </div>
+      <div class="inline-form">
+        <div class="field"><label>Année</label><input type="number" id="achats-annee" value="2026" style="width:100px;"></div>
+        <div class="field"><label>Fournisseur</label><input type="text" id="new-dep-fournisseur" placeholder="ex. Delhaize"></div>
+        <div class="field"><label>Montant TVAC (€)</label><input type="number" id="new-dep-montant" style="width:110px;"></div>
+        <div class="field">
+          <label>Type de frais</label>
+          <select id="new-dep-categorie"></select>
+        </div>
+        <div class="field"><label>Date</label><input type="date" id="new-dep-date"></div>
+        <button class="btn-small" onclick="ajouterDepense()">Ajouter la dépense</button>
+      </div>
+      <div id="achats-msg" class="auth-msg"></div>
+
+      <table class="table">
+        <thead><tr><th>Date</th><th>Fournisseur</th><th>Catégorie</th><th>Montant TVAC</th><th>% déd.</th><th>Montant déductible</th><th></th></tr></thead>
+        <tbody id="depenses-table-body"><tr><td colspan="7">Chargement…</td></tr></tbody>
+      </table>
+      <p id="achats-total" style="font-weight:600; margin-top:14px;"></p>
+    </div>
+
+    <!-- ===================== COORDONNÉES ===================== -->
+    <div class="tab-panel" id="tab-coord">
+      <div class="dash-card" style="max-width:460px;">
+        <h3>Coordonnées affichées sur les factures</h3>
+        <div class="field"><label>Nom</label><input type="text" id="coord-nom"></div>
+        <div class="field"><label>Adresse</label><input type="text" id="coord-adresse"></div>
+        <div class="field"><label>Numéro d'entreprise</label><input type="text" id="coord-numero"></div>
+        <div id="coord-msg" class="auth-msg"></div>
+        <button class="btn btn-primary btn-block" onclick="sauverCoordonnees()">Enregistrer</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="auth.js"></script>
+<script>
+guardRole("admin");
+
+// ---------- onglets ----------
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+  });
+});
+
+const MOIS_NOMS = ["", "Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+const CATEGORIES_VENTE = ["Atelier", "Thérapeute", "Formation"];
+
+// =====================================================================
+// FACTURES DE VENTE — pas de TVA, numérotation continue "AAAA NNN"
+// =====================================================================
+
+async function genererFacturesMois(){
+  const msg = document.getElementById("ventes-msg");
+  const annee = parseInt(document.getElementById("ventes-annee").value);
+  const mois = parseInt(document.getElementById("ventes-mois").value);
+
+  const existant = await db.collection("factures").where("annee","==",annee).where("mois","==",mois).get();
+  if(!existant.empty){
+    showMsg(msg, "Les factures de " + MOIS_NOMS[mois] + " " + annee + " existent déjà.", "error");
+    return;
+  }
+
+  // dernier numéro utilisé cette année-là
+  const snap = await db.collection("factures").where("annee","==",annee).get();
+  let dernierNumero = 0;
+  snap.forEach(d => { if(d.data().numero > dernierNumero) dernierNumero = d.data().numero; });
+
+  const batch = db.batch();
+  CATEGORIES_VENTE.forEach((cat, i) => {
+    const numero = dernierNumero + i + 1;
+    const ref = db.collection("factures").doc();
+    batch.set(ref, { annee, mois, categorie: cat, numero, montant: 0, dateGeneration: new Date().toISOString() });
+  });
+  await batch.commit();
+  showMsg(msg, "3 factures générées pour " + MOIS_NOMS[mois] + " " + annee + ".", "ok");
+  chargerFactures();
+}
+
+async function chargerFactures(){
+  const annee = parseInt(document.getElementById("ventes-annee").value) || 2026;
+  const body = document.getElementById("ventes-table-body");
+  const snap = await db.collection("factures").where("annee","==",annee).orderBy("numero").get();
+  if(snap.empty){ body.innerHTML = "<tr><td colspan='5'>Aucune facture pour " + annee + ".</td></tr>"; return; }
+  body.innerHTML = "";
+  snap.forEach(doc => {
+    const f = doc.data();
+    const numeroAffiche = annee + " " + String(f.numero).padStart(3,"0");
+    body.innerHTML += `<tr>
+      <td>${numeroAffiche}</td>
+      <td>${MOIS_NOMS[f.mois]}</td>
+      <td>${f.categorie}</td>
+      <td><input class="montant" type="number" step="0.01" value="${f.montant}" onchange="majMontantFacture('${doc.id}', this.value)"></td>
+      <td><button class="mini-btn" onclick="voirFacture('${doc.id}')">Aperçu</button></td>
+    </tr>`;
+  });
+}
+
+async function majMontantFacture(id, valeur){
+  await db.collection("factures").doc(id).update({ montant: parseFloat(valeur) || 0 });
+}
+
+async function voirFacture(id){
+  const doc = await db.collection("factures").doc(id).get();
+  const f = doc.data();
+  const coordDoc = await db.collection("settings").doc("facturation").get();
+  const c = coordDoc.exists ? coordDoc.data() : {};
+  const numeroAffiche = f.annee + " " + String(f.numero).padStart(3,"0");
+  const win = window.open("", "_blank", "width=480,height=640");
+  win.document.write(`
+    <html><head><title>Facture ${numeroAffiche}</title>
+    <style>body{font-family:sans-serif; padding:32px; color:#2A2733;} h1{font-size:1.3rem;} .l{margin-bottom:6px;}</style>
+    </head><body>
+    <h1>Facture ${numeroAffiche}</h1>
+    <p class="l"><strong>${c.nom || "Isabelle Filleul — LudoThéraCoach"}</strong></p>
+    <p class="l">${c.adresse || "Adresse à compléter"}</p>
+    <p class="l">N° d'entreprise : ${c.numeroEntreprise || "à compléter"}</p>
+    <p class="l">Activité non assujettie à la TVA — aucune TVA n'est portée en compte.</p>
+    <hr>
+    <p class="l">Client comptant</p>
+    <p class="l">Prestation : ${f.categorie} — ${MOIS_NOMS[f.mois]} ${f.annee}</p>
+    <p class="l" style="font-size:1.2rem; font-weight:700;">Montant : ${f.montant.toFixed(2)} €</p>
+    </body></html>
+  `);
+}
+
+// =====================================================================
+// ACHATS / FRAIS
+// =====================================================================
+
+const DEFAULT_CATEGORIES = [
+  { nom: "Matériel de bureau", deductibilite: 100 },
+  { nom: "Cadeau", deductibilite: 100 },
+  { nom: "Location", deductibilite: 100 },
+  { nom: "Restaurant", deductibilite: 67 }
+];
+
+async function seedCategoriesSiVide(){
+  const snap = await db.collection("fraisCategories").get();
+  if(snap.empty){
+    const batch = db.batch();
+    DEFAULT_CATEGORIES.forEach(c => batch.set(db.collection("fraisCategories").doc(), c));
+    await batch.commit();
+  }
+}
+
+async function chargerCategories(){
+  await seedCategoriesSiVide();
+  const snap = await db.collection("fraisCategories").orderBy("nom").get();
+  const body = document.getElementById("categories-table-body");
+  const select = document.getElementById("new-dep-categorie");
+  body.innerHTML = "";
+  select.innerHTML = "";
+  snap.forEach(doc => {
+    const cat = doc.data();
+    body.innerHTML += `<tr>
+      <td>${cat.nom}</td>
+      <td><input type="number" value="${cat.deductibilite}" style="width:80px;" onchange="majCategorie('${doc.id}', this.value)"> %</td>
+      <td></td>
+    </tr>`;
+    select.innerHTML += `<option value="${doc.id}" data-pct="${cat.deductibilite}">${cat.nom} (${cat.deductibilite}%)</option>`;
+  });
+}
+
+async function majCategorie(id, pct){
+  await db.collection("fraisCategories").doc(id).update({ deductibilite: parseFloat(pct) || 0 });
+  chargerDepenses();
+}
+
+async function ajouterCategorie(){
+  const nom = document.getElementById("new-cat-nom").value.trim();
+  const pct = parseFloat(document.getElementById("new-cat-pct").value) || 100;
+  if(!nom) return;
+  await db.collection("fraisCategories").add({ nom, deductibilite: pct });
+  document.getElementById("new-cat-nom").value = "";
+  chargerCategories();
+}
+
+async function ajouterDepense(){
+  const msg = document.getElementById("achats-msg");
+  const annee = parseInt(document.getElementById("achats-annee").value) || 2026;
+  const fournisseur = document.getElementById("new-dep-fournisseur").value.trim();
+  const montant = parseFloat(document.getElementById("new-dep-montant").value);
+  const categorieId = document.getElementById("new-dep-categorie").value;
+  const date = document.getElementById("new-dep-date").value;
+  if(!fournisseur || isNaN(montant) || !categorieId){
+    showMsg(msg, "Complète fournisseur, montant et catégorie.", "error");
+    return;
+  }
+  await db.collection("depenses").add({ annee, fournisseur, montantTVAC: montant, categorieId, date });
+  document.getElementById("new-dep-fournisseur").value = "";
+  document.getElementById("new-dep-montant").value = "";
+  showMsg(msg, "Dépense ajoutée.", "ok");
+  chargerDepenses();
+}
+
+async function chargerDepenses(){
+  const annee = parseInt(document.getElementById("achats-annee").value) || 2026;
+  const catSnap = await db.collection("fraisCategories").get();
+  const categories = {};
+  catSnap.forEach(d => categories[d.id] = d.data());
+
+  const snap = await db.collection("depenses").where("annee","==",annee).get();
+  const body = document.getElementById("depenses-table-body");
+  if(snap.empty){ body.innerHTML = "<tr><td colspan='7'>Aucune dépense pour " + annee + ".</td></tr>"; document.getElementById("achats-total").textContent=""; return; }
+  body.innerHTML = "";
+  let total = 0, totalDeductible = 0;
+  snap.forEach(doc => {
+    const d = doc.data();
+    const cat = categories[d.categorieId] || { nom: "?", deductibilite: 0 };
+    const deductible = d.montantTVAC * (cat.deductibilite/100);
+    total += d.montantTVAC; totalDeductible += deductible;
+    body.innerHTML += `<tr>
+      <td>${d.date || "—"}</td>
+      <td>${d.fournisseur}</td>
+      <td>${cat.nom}</td>
+      <td>${d.montantTVAC.toFixed(2)} €</td>
+      <td>${cat.deductibilite}%</td>
+      <td>${deductible.toFixed(2)} €</td>
+      <td><button class="mini-btn" onclick="supprimerDepense('${doc.id}')">Supprimer</button></td>
+    </tr>`;
+  });
+  document.getElementById("achats-total").textContent =
+    "Total dépenses " + annee + " : " + total.toFixed(2) + " € TVAC — dont " + totalDeductible.toFixed(2) + " € déductibles.";
+}
+
+async function supprimerDepense(id){
+  await db.collection("depenses").doc(id).delete();
+  chargerDepenses();
+}
+
+// =====================================================================
+// COORDONNÉES DE FACTURATION
+// =====================================================================
+
+async function chargerCoordonnees(){
+  const doc = await db.collection("settings").doc("facturation").get();
+  if(doc.exists){
+    const c = doc.data();
+    document.getElementById("coord-nom").value = c.nom || "";
+    document.getElementById("coord-adresse").value = c.adresse || "";
+    document.getElementById("coord-numero").value = c.numeroEntreprise || "";
+  }
+}
+
+async function sauverCoordonnees(){
+  const nom = document.getElementById("coord-nom").value.trim();
+  const adresse = document.getElementById("coord-adresse").value.trim();
+  const numeroEntreprise = document.getElementById("coord-numero").value.trim();
+  await db.collection("settings").doc("facturation").set({ nom, adresse, numeroEntreprise });
+  showMsg(document.getElementById("coord-msg"), "Coordonnées enregistrées.", "ok");
+}
+
+// ---------- rechargement quand on change d'année ----------
+document.getElementById("ventes-annee").addEventListener("change", chargerFactures);
+document.getElementById("achats-annee").addEventListener("change", chargerDepenses);
+
+// ---------- init ----------
+chargerFactures();
+chargerCategories().then(chargerDepenses);
+chargerCoordonnees();
+</script>
+</body>
+</html>

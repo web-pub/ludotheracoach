@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fiches membres — LudoThéraCoach</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .fiche-detail{ display:none; background:var(--bg-soft); }
+  .fiche-detail.open{ display:table-row; }
+  .fiche-detail td{ padding:18px 22px; }
+  .enfant-tag{ display:inline-block; background:var(--mauve-lt); color:var(--mauve-dk); font-size:.82rem; font-weight:600; padding:5px 12px; border-radius:100px; margin:0 6px 6px 0; }
+</style>
+</head>
+<body>
+
+<div class="dash-header">
+  <div class="container">
+    <div class="who">
+      <span class="role-badge admin" data-user-role>Admin</span>
+      <span data-user-name>...</span>
+    </div>
+    <a href="admin.html" class="logout-link">← Retour au tableau de bord</a>
+  </div>
+</div>
+
+<div class="dash-body">
+  <div class="container">
+
+    <div class="section-head">
+      <span class="eyebrow">familles suivies</span>
+      <h2>Fiches membres</h2>
+    </div>
+
+    <table class="table">
+      <thead><tr><th>Nom (compte)</th><th>E-mail</th><th>Parent renseigné</th><th>Enfant(s)</th><th></th></tr></thead>
+      <tbody id="fiches-table-body"><tr><td colspan="5">Chargement…</td></tr></tbody>
+    </table>
+
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="auth.js"></script>
+<script>
+guardRole("admin");
+
+async function chargerFiches(){
+  const body = document.getElementById("fiches-table-body");
+  const usersSnap = await db.collection("users").where("role","==","membre").get();
+  if(usersSnap.empty){ body.innerHTML = "<tr><td colspan='5'>Aucun membre pour l'instant.</td></tr>"; return; }
+
+  body.innerHTML = "";
+  for(const userDoc of usersSnap.docs){
+    const u = userDoc.data();
+    const ficheDoc = await db.collection("fiches").doc(userDoc.id).get();
+    const f = ficheDoc.exists ? ficheDoc.data() : null;
+    const nbEnfants = f && f.enfants ? f.enfants.length : 0;
+
+    body.innerHTML += `<tr onclick="toggleDetail('${userDoc.id}')" style="cursor:pointer;">
+      <td>${u.nom || "—"}</td>
+      <td>${u.email || "—"}</td>
+      <td>${f ? (f.parentNom || "renseigné") : "pas encore complétée"}</td>
+      <td>${nbEnfants}</td>
+      <td><button class="mini-btn">Voir</button></td>
+    </tr>
+    <tr class="fiche-detail" id="detail-${userDoc.id}">
+      <td colspan="5">
+        ${f ? `
+          <p><strong>Parent :</strong> ${f.parentNom || "—"} · 📞 ${f.parentTelephone || "—"} · ✉️ ${f.parentEmail || "—"}</p>
+          <p><strong>Adresse :</strong> ${f.parentAdresse || "—"}</p>
+          <p><strong>Enfant(s) :</strong> ${nbEnfants ? f.enfants.map(e => `<span class="enfant-tag">${e.nom}${e.dateNaissance ? " — " + e.dateNaissance : ""}</span>`).join("") : "aucun renseigné"}</p>
+        ` : `<p>Ce membre n'a pas encore complété sa fiche.</p>`}
+      </td>
+    </tr>`;
+  }
+}
+
+function toggleDetail(uid){
+  document.getElementById("detail-" + uid).classList.toggle("open");
+}
+
+chargerFiches();
+</script>
+</body>
+</html>

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ateliers & formations — LudoThéraCoach</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .inline-form{ display:flex; gap:10px; flex-wrap:wrap; align-items:end; margin-bottom:22px; }
+  .inline-form .field{ margin-bottom:0; }
+  .pill.atelier{ background:var(--gold-lt); color:#8a5a10; }
+  .pill.formation{ background:var(--mauve-lt); color:var(--mauve-dk); }
+</style>
+</head>
+<body>
+
+<div class="dash-header">
+  <div class="container">
+    <div class="who">
+      <span class="role-badge admin" data-user-role>Admin</span>
+      <span data-user-name>...</span>
+    </div>
+    <a href="admin.html" class="logout-link">← Retour au tableau de bord</a>
+  </div>
+</div>
+
+<div class="dash-body">
+  <div class="container">
+
+    <div class="section-head">
+      <span class="eyebrow">groupes & sessions</span>
+      <h2>Ateliers des émotions & formations</h2>
+    </div>
+
+    <div class="inline-form">
+      <div class="field">
+        <label>Type</label>
+        <select id="new-type"><option value="atelier">Atelier des émotions</option><option value="formation">Formation</option></select>
+      </div>
+      <div class="field"><label>Titre</label><input type="text" id="new-titre" placeholder="ex. Groupe du mercredi"></div>
+      <div class="field"><label>Date</label><input type="date" id="new-date"></div>
+      <div class="field"><label>Heure début</label><input type="time" id="new-debut"></div>
+      <div class="field"><label>Heure fin</label><input type="time" id="new-fin"></div>
+      <div class="field"><label>Lieu</label><input type="text" id="new-lieu" placeholder="ex. École de Fernelmont"></div>
+    </div>
+    <div class="inline-form">
+      <div class="field" style="flex:1; min-width:260px;"><label>Description (optionnel)</label><input type="text" id="new-desc"></div>
+      <button class="btn btn-primary" onclick="ajouterEvenement()">Ajouter la session</button>
+    </div>
+    <div id="evt-msg" class="auth-msg"></div>
+
+    <table class="table">
+      <thead><tr><th>Date</th><th>Horaire</th><th>Type</th><th>Titre</th><th>Lieu</th><th></th></tr></thead>
+      <tbody id="evt-table-body"><tr><td colspan="6">Chargement…</td></tr></tbody>
+    </table>
+
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="auth.js"></script>
+<script>
+guardRole("admin");
+
+async function ajouterEvenement(){
+  const msg = document.getElementById("evt-msg");
+  const type = document.getElementById("new-type").value;
+  const titre = document.getElementById("new-titre").value.trim();
+  const date = document.getElementById("new-date").value;
+  const heureDebut = document.getElementById("new-debut").value;
+  const heureFin = document.getElementById("new-fin").value;
+  const lieu = document.getElementById("new-lieu").value.trim();
+  const description = document.getElementById("new-desc").value.trim();
+  if(!titre || !date || !heureDebut || !heureFin || !lieu){
+    showMsg(msg, "Complète au minimum titre, date, horaires et lieu.", "error");
+    return;
+  }
+  await db.collection("evenements").add({ type, titre, date, heureDebut, heureFin, lieu, description });
+  showMsg(msg, "Session ajoutée.", "ok");
+  document.getElementById("new-titre").value = "";
+  document.getElementById("new-lieu").value = "";
+  document.getElementById("new-desc").value = "";
+  chargerEvenements();
+}
+
+async function chargerEvenements(){
+  const body = document.getElementById("evt-table-body");
+  const snap = await db.collection("evenements").orderBy("date").get();
+  if(snap.empty){ body.innerHTML = "<tr><td colspan='6'>Aucune session pour l'instant.</td></tr>"; return; }
+  body.innerHTML = "";
+  snap.forEach(doc => {
+    const e = doc.data();
+    body.innerHTML += `<tr>
+      <td>${e.date}</td>
+      <td>${e.heureDebut} – ${e.heureFin}</td>
+      <td><span class="pill ${e.type}">${e.type === "atelier" ? "Atelier" : "Formation"}</span></td>
+      <td>${e.titre}</td>
+      <td>${e.lieu}</td>
+      <td><button class="mini-btn" onclick="supprimerEvenement('${doc.id}')">Supprimer</button></td>
+    </tr>`;
+  });
+}
+
+async function supprimerEvenement(id){
+  await db.collection("evenements").doc(id).delete();
+  chargerEvenements();
+}
+
+chargerEvenements();
+</script>
+</body>
+</html>

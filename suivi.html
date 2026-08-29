@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Suivi des membres — LudoThéraCoach</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  select.suivi-select, select.evt-select{ font-family:var(--body); padding:8px 10px; border-radius:8px; border:1.5px solid rgba(42,39,51,.14); }
+</style>
+</head>
+<body>
+
+<div class="dash-header">
+  <div class="container">
+    <div class="who">
+      <span class="role-badge admin" data-user-role>Admin</span>
+      <span data-user-name>...</span>
+    </div>
+    <a href="admin.html" class="logout-link">← Retour au tableau de bord</a>
+  </div>
+</div>
+
+<div class="dash-body">
+  <div class="container">
+
+    <div class="section-head">
+      <span class="eyebrow">calendriers des membres</span>
+      <h2>Suivi de chaque membre</h2>
+      <p style="max-width:600px;">Indique pour chaque membre son type de suivi. Pour un atelier ou une formation, associe-le à une session précise créée dans "Ateliers & formations".</p>
+    </div>
+
+    <table class="table">
+      <thead><tr><th>Nom</th><th>E-mail</th><th>Type de suivi</th><th>Session liée</th></tr></thead>
+      <tbody id="suivi-table-body"><tr><td colspan="4">Chargement…</td></tr></tbody>
+    </table>
+
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="auth.js"></script>
+<script>
+guardRole("admin");
+
+let EVENEMENTS = [];
+
+async function chargerEvenementsListe(){
+  const snap = await db.collection("evenements").orderBy("date").get();
+  EVENEMENTS = [];
+  snap.forEach(doc => EVENEMENTS.push({ id: doc.id, ...doc.data() }));
+}
+
+function optionsEvenements(type, selectedId){
+  return EVENEMENTS.filter(e => e.type === type).map(e =>
+    `<option value="${e.id}" ${e.id === selectedId ? "selected" : ""}>${e.date} — ${e.titre} (${e.lieu})</option>`
+  ).join("");
+}
+
+async function chargerMembres(){
+  await chargerEvenementsListe();
+  const body = document.getElementById("suivi-table-body");
+  const snap = await db.collection("users").where("role","==","membre").get();
+  if(snap.empty){ body.innerHTML = "<tr><td colspan='4'>Aucun membre pour l'instant.</td></tr>"; return; }
+  body.innerHTML = "";
+  snap.forEach(doc => {
+    const u = doc.data();
+    const suivi = u.suivi || "";
+    body.innerHTML += `<tr data-uid="${doc.id}">
+      <td>${u.nom || "—"}</td>
+      <td>${u.email || "—"}</td>
+      <td>
+        <select class="suivi-select" onchange="majSuivi('${doc.id}', this.value)">
+          <option value="">— à définir —</option>
+          <option value="individuel" ${suivi==="individuel"?"selected":""}>Thérapie individuelle</option>
+          <option value="atelier" ${suivi==="atelier"?"selected":""}>Atelier des émotions</option>
+          <option value="formation" ${suivi==="formation"?"selected":""}>Formation</option>
+        </select>
+      </td>
+      <td class="evt-cell">
+        ${suivi === "atelier" || suivi === "formation"
+          ? `<select class="evt-select" onchange="majEvenement('${doc.id}', this.value)"><option value="">— choisir —</option>${optionsEvenements(suivi, u.eventId)}</select>`
+          : "—"}
+      </td>
+    </tr>`;
+  });
+}
+
+async function majSuivi(uid, suivi){
+  await db.collection("users").doc(uid).update({ suivi, eventId: null });
+  chargerMembres();
+}
+
+async function majEvenement(uid, eventId){
+  await db.collection("users").doc(uid).update({ eventId });
+}
+
+chargerMembres();
+</script>
+</body>
+</html>

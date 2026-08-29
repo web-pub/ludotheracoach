@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Super user — LudoThéraCoach</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="dash-header">
+  <div class="container">
+    <div class="who">
+      <span class="role-badge super">Super user</span>
+      <span data-user-name>...</span>
+      <span class="version-tag" id="version-tag"></span>
+    </div>
+    <a href="#" class="logout-link" onclick="logoutUser()">Se déconnecter</a>
+  </div>
+</div>
+
+<div class="dash-body">
+  <div class="container">
+
+    <div class="section-head">
+      <span class="eyebrow">vue d'ensemble</span>
+      <h2>Tableau de bord — accès total</h2>
+    </div>
+
+    <div class="dash-cards" style="margin-bottom:40px;">
+      <div class="dash-card" style="--accent:var(--turquoise)">
+        <h3>Espace Admin</h3>
+        <p>Fiches membres, calendriers, compta d'Isabelle.</p>
+        <a href="admin.html" class="btn-small">Consulter →</a>
+      </div>
+      <div class="dash-card" style="--accent:var(--gold)">
+        <h3>Espace Membre</h3>
+        <p>Aperçu de ce que voient les membres.</p>
+        <a href="membre.html" class="btn-small">Consulter →</a>
+      </div>
+      <div class="dash-card" style="--accent:var(--mauve)">
+        <h3>Statut du chantier</h3>
+        <p>Vitrine ✓ · Connexion 3 rôles ✓ · Compta ✓ · Calendriers ✓ · Fiches membres ✓</p>
+        <span class="status">cahier des charges initial complet</span>
+      </div>
+    </div>
+
+    <div class="section-head">
+      <span class="eyebrow">gestion des comptes</span>
+      <h2>Utilisateurs</h2>
+    </div>
+
+    <table class="table" style="margin-bottom:32px;">
+      <thead><tr><th>Nom</th><th>E-mail</th><th>Rôle</th></tr></thead>
+      <tbody id="users-table-body">
+        <tr><td colspan="3">Chargement…</td></tr>
+      </tbody>
+    </table>
+
+    <div class="dash-card" style="max-width:440px; --accent:var(--ink);">
+      <h3>Réinitialiser un mot de passe</h3>
+      <p>Envoie un lien de réinitialisation à l'e-mail d'un utilisateur (admin ou membre).</p>
+      <div id="reset-msg" class="auth-msg"></div>
+      <div class="field">
+        <input type="email" id="reset-email" placeholder="e-mail de l'utilisateur">
+      </div>
+      <button class="btn btn-primary btn-block" onclick="superuserSendReset()">Envoyer le lien</button>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="auth.js"></script>
+<script>
+  document.getElementById("version-tag").textContent = SITE_VERSION;
+  guardRole("superuser");
+
+  db.collection("users").get().then(snap => {
+    const body = document.getElementById("users-table-body");
+    if(snap.empty){
+      body.innerHTML = "<tr><td colspan='3'>Aucun utilisateur créé pour l'instant dans Firestore.</td></tr>";
+      return;
+    }
+    body.innerHTML = "";
+    snap.forEach(doc => {
+      const u = doc.data();
+      const pillClass = u.role === "superuser" ? "super" : (u.role || "membre");
+      body.innerHTML += `<tr><td>${u.nom || "—"}</td><td>${u.email || "—"}</td><td><span class="pill ${pillClass}">${u.role || "?"}</span></td></tr>`;
+    });
+  }).catch(() => {
+    document.getElementById("users-table-body").innerHTML = "<tr><td colspan='3'>Impossible de charger la liste (vérifie la configuration Firebase).</td></tr>";
+  });
+
+  function superuserSendReset(){
+    const email = document.getElementById("reset-email").value.trim();
+    const msg = document.getElementById("reset-msg");
+    if(!email){ showMsg(msg, "Indique un e-mail.", "error"); return; }
+    auth.sendPasswordResetEmail(email)
+      .then(() => showMsg(msg, "Lien envoyé à " + email + ".", "ok"))
+      .catch(err => showMsg(msg, "Erreur : " + err.message, "error"));
+  }
+</script>
+</body>
+</html>

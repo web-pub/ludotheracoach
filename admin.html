@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Espace Admin — LudoThéraCoach</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="dash-header">
+  <div class="container">
+    <div class="who">
+      <span class="role-badge admin" data-user-role>Admin</span>
+      <span data-user-name>...</span>
+      <span class="version-tag" id="version-tag"></span>
+    </div>
+    <a href="#" class="logout-link" onclick="logoutUser()">Se déconnecter</a>
+  </div>
+</div>
+
+<div class="dash-body">
+  <div class="container">
+
+    <div class="section-head">
+      <span class="eyebrow">bonjour Isabelle</span>
+      <h2>Ton espace de gestion</h2>
+    </div>
+
+    <div class="dash-cards">
+      <div class="dash-card" style="--accent:var(--turquoise)">
+        <h3>Fiches membres</h3>
+        <p>Coordonnées des parents et des enfants suivis (plusieurs enfants possibles par famille).</p>
+        <a href="fiches.html" class="btn-small">Ouvrir →</a>
+      </div>
+      <div class="dash-card" style="--accent:var(--gold)">
+        <h3>Mes disponibilités</h3>
+        <p>Indiquer tes créneaux libres pour les séances individuelles.</p>
+        <a href="disponibilites.html" class="btn-small">Ouvrir →</a>
+      </div>
+      <div class="dash-card" style="--accent:var(--mauve)">
+        <h3>Ateliers & formations</h3>
+        <p>Planifier les dates et lieux des ateliers des émotions et des formations.</p>
+        <a href="evenements.html" class="btn-small">Ouvrir →</a>
+      </div>
+      <div class="dash-card" style="--accent:var(--turquoise-dk)">
+        <h3>Suivi des membres</h3>
+        <p>Assigner à chaque membre son type de suivi et sa session (atelier/formation).</p>
+        <a href="suivi.html" class="btn-small">Ouvrir →</a>
+      </div>
+      <div class="dash-card" style="--accent:var(--turquoise-dk)">
+        <h3>Comptabilité</h3>
+        <p>3 factures mensuelles (atelier / thérapie / formation), numérotées 2026 001, 002… + suivi des achats/frais.</p>
+        <a href="compta.html" class="btn-small">Ouvrir →</a>
+      </div>
+    </div>
+
+    <div class="section-head">
+      <span class="eyebrow">vue d'ensemble</span>
+      <h2>Comptes du site</h2>
+      <p style="max-width:560px;">Vue complète des comptes — la réinitialisation des mots de passe reste réservée au super user.</p>
+    </div>
+
+    <table class="table">
+      <thead><tr><th>Nom</th><th>E-mail</th><th>Rôle</th></tr></thead>
+      <tbody id="users-table-body"><tr><td colspan="3">Chargement…</td></tr></tbody>
+    </table>
+
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="auth.js"></script>
+<script>
+guardRole("admin");
+document.getElementById("version-tag").textContent = SITE_VERSION;
+
+db.collection("users").get().then(snap => {
+  const body = document.getElementById("users-table-body");
+  if(snap.empty){
+    body.innerHTML = "<tr><td colspan='3'>Aucun utilisateur pour l'instant.</td></tr>";
+    return;
+  }
+  body.innerHTML = "";
+  snap.forEach(doc => {
+    const u = doc.data();
+    const pillClass = u.role === "superuser" ? "super" : (u.role || "membre");
+    body.innerHTML += `<tr><td>${u.nom || "—"}</td><td>${u.email || "—"}</td><td><span class="pill ${pillClass}">${u.role || "?"}</span></td></tr>`;
+  });
+}).catch(() => {
+  document.getElementById("users-table-body").innerHTML = "<tr><td colspan='3'>Impossible de charger la liste (vérifie la configuration Firebase).</td></tr>";
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mes disponibilités — LudoThéraCoach</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .inline-form{ display:flex; gap:10px; flex-wrap:wrap; align-items:end; margin-bottom:22px; }
+  .inline-form .field{ margin-bottom:0; }
+</style>
+</head>
+<body>
+
+<div class="dash-header">
+  <div class="container">
+    <div class="who">
+      <span class="role-badge admin" data-user-role>Admin</span>
+      <span data-user-name>...</span>
+    </div>
+    <a href="admin.html" class="logout-link">← Retour au tableau de bord</a>
+  </div>
+</div>
+
+<div class="dash-body">
+  <div class="container">
+
+    <div class="section-head">
+      <span class="eyebrow">séances individuelles</span>
+      <h2>Mes disponibilités</h2>
+    </div>
+
+    <div class="inline-form">
+      <div class="field"><label>Date</label><input type="date" id="new-date"></div>
+      <div class="field"><label>Heure début</label><input type="time" id="new-debut"></div>
+      <div class="field"><label>Heure fin</label><input type="time" id="new-fin"></div>
+      <button class="btn btn-primary" onclick="ajouterCreneau()">Ajouter le créneau</button>
+    </div>
+    <div id="dispo-msg" class="auth-msg"></div>
+
+    <table class="table">
+      <thead><tr><th>Date</th><th>Horaire</th><th>Statut</th><th></th></tr></thead>
+      <tbody id="dispo-table-body"><tr><td colspan="4">Chargement…</td></tr></tbody>
+    </table>
+
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="auth.js"></script>
+<script>
+guardRole("admin");
+
+async function ajouterCreneau(){
+  const msg = document.getElementById("dispo-msg");
+  const date = document.getElementById("new-date").value;
+  const heureDebut = document.getElementById("new-debut").value;
+  const heureFin = document.getElementById("new-fin").value;
+  if(!date || !heureDebut || !heureFin){
+    showMsg(msg, "Complète la date et les deux heures.", "error");
+    return;
+  }
+  await db.collection("disponibilites").add({ date, heureDebut, heureFin, reserve: false, membreUid: null, membreNom: null });
+  showMsg(msg, "Créneau ajouté.", "ok");
+  document.getElementById("new-date").value = "";
+  chargerCreneaux();
+}
+
+async function chargerCreneaux(){
+  const body = document.getElementById("dispo-table-body");
+  const snap = await db.collection("disponibilites").orderBy("date").get();
+  if(snap.empty){ body.innerHTML = "<tr><td colspan='4'>Aucun créneau pour l'instant.</td></tr>"; return; }
+  body.innerHTML = "";
+  snap.forEach(doc => {
+    const d = doc.data();
+    const statut = d.reserve ? ("Réservé — " + (d.membreNom || "membre")) : "Libre";
+    body.innerHTML += `<tr>
+      <td>${d.date}</td>
+      <td>${d.heureDebut} – ${d.heureFin}</td>
+      <td>${statut}</td>
+      <td><button class="mini-btn" onclick="supprimerCreneau('${doc.id}')">Supprimer</button></td>
+    </tr>`;
+  });
+}
+
+async function supprimerCreneau(id){
+  await db.collection("disponibilites").doc(id).delete();
+  chargerCreneaux();
+}
+
+chargerCreneaux();
+</script>
+</body>
+</html>

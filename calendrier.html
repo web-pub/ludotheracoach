@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mon calendrier — LudoThéraCoach</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="dash-header">
+  <div class="container">
+    <div class="who">
+      <span class="role-badge membre" data-user-role>Membre</span>
+      <span data-user-name>...</span>
+    </div>
+    <a href="membre.html" class="logout-link">← Retour à mon espace</a>
+  </div>
+</div>
+
+<div class="dash-body">
+  <div class="container">
+
+    <div class="section-head">
+      <span class="eyebrow">mon suivi</span>
+      <h2>Mon calendrier</h2>
+    </div>
+
+    <div id="calendrier-contenu">Chargement…</div>
+
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="auth.js"></script>
+<script>
+guardRole("membre");
+
+auth.onAuthStateChanged(async (user) => {
+  if(!user) return;
+  const userDoc = await db.collection("users").doc(user.uid).get();
+  const u = userDoc.exists ? userDoc.data() : {};
+  const zone = document.getElementById("calendrier-contenu");
+
+  if(!u.suivi){
+    zone.innerHTML = `<div class="dash-card"><p>Ton type de suivi n'a pas encore été défini par Isabelle. Il apparaîtra ici dès que ce sera fait.</p></div>`;
+    return;
+  }
+
+  if(u.suivi === "individuel"){
+    const snap = await db.collection("disponibilites").orderBy("date").get();
+    const mesCreneaux = [];
+    const disponibles = [];
+    snap.forEach(doc => {
+      const d = doc.data();
+      if(d.reserve && d.membreUid === user.uid) mesCreneaux.push({ id: doc.id, ...d });
+      else if(!d.reserve) disponibles.push({ id: doc.id, ...d });
+    });
+
+    let html = `<div class="section-head"><h3 style="font-family:var(--body); font-size:1rem;">Mes rendez-vous</h3></div>`;
+    html += mesCreneaux.length
+      ? `<table class="table" style="margin-bottom:32px;"><thead><tr><th>Date</th><th>Horaire</th></tr></thead><tbody>` +
+        mesCreneaux.map(c => `<tr><td>${c.date}</td><td>${c.heureDebut} – ${c.heureFin}</td></tr>`).join("") + `</tbody></table>`
+      : `<p>Aucun rendez-vous réservé pour l'instant.</p>`;
+
+    html += `<div class="section-head"><h3 style="font-family:var(--body); font-size:1rem;">Créneaux disponibles</h3></div>`;
+    html += disponibles.length
+      ? `<table class="table"><thead><tr><th>Date</th><th>Horaire</th><th></th></tr></thead><tbody>` +
+        disponibles.map(c => `<tr><td>${c.date}</td><td>${c.heureDebut} – ${c.heureFin}</td><td><button class="btn-small" onclick="reserverCreneau('${c.id}', '${user.uid}')">Réserver</button></td></tr>`).join("") + `</tbody></table>`
+      : `<p>Aucun créneau libre pour le moment.</p>`;
+
+    zone.innerHTML = html;
+
+  } else {
+    // atelier ou formation
+    if(!u.eventId){
+      zone.innerHTML = `<div class="dash-card"><p>Aucune session n'est encore associée à ton suivi. Elle apparaîtra ici dès qu'Isabelle l'aura planifiée.</p></div>`;
+      return;
+    }
+    const evtDoc = await db.collection("evenements").doc(u.eventId).get();
+    if(!evtDoc.exists){
+      zone.innerHTML = `<div class="dash-card"><p>La session associée n'est plus disponible.</p></div>`;
+      return;
+    }
+    const e = evtDoc.data();
+    zone.innerHTML = `<div class="dash-card" style="--accent:${u.suivi === "atelier" ? "var(--gold)" : "var(--mauve)"}; max-width:440px;">
+      <span class="tag">${u.suivi === "atelier" ? "Atelier des émotions" : "Formation"}</span>
+      <h3>${e.titre}</h3>
+      <p>${e.date} · ${e.heureDebut} – ${e.heureFin}</p>
+      <p>📍 ${e.lieu}</p>
+      ${e.description ? `<p>${e.description}</p>` : ""}
+    </div>`;
+  }
+});
+
+async function reserverCreneau(id, uid){
+  const userDoc = await db.collection("users").doc(uid).get();
+  const nom = userDoc.exists ? (userDoc.data().nom || "") : "";
+  await db.collection("disponibilites").doc(id).update({ reserve: true, membreUid: uid, membreNom: nom });
+  location.reload();
+}
+</script>
+</body>
+</html>
