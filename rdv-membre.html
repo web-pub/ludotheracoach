@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Événements / RDV — LudoThéraCoach</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .rdv-block{ background:#fff; border-radius:var(--radius); box-shadow:var(--shadow); padding:24px; margin-bottom:22px; max-width:520px; }
+  .rdv-block h3{ margin-bottom:4px; }
+  .pay-box{ background:var(--bg-soft); border-radius:12px; padding:14px 16px; font-size:.88rem; margin:14px 0; }
+  .pay-box strong{ display:block; margin-bottom:4px; }
+</style>
+</head>
+<body>
+
+<div class="dash-header">
+  <div class="container">
+    <div class="who">
+      <span class="role-badge membre">Événements / RDV</span>
+      <span data-user-name>...</span>
+    </div>
+    <a href="membre.html" class="logout-link">← Retour à mon espace</a>
+  </div>
+</div>
+
+<div class="dash-body">
+  <div class="container">
+
+    <div class="section-head">
+      <span class="eyebrow">à venir</span>
+      <h2>Événements / RDV</h2>
+    </div>
+
+    <div id="rdv-liste">Chargement…</div>
+
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="auth.js"></script>
+<script>
+guardRole("membre");
+
+let currentUid = null, currentNom = "";
+
+auth.onAuthStateChanged(async (user) => {
+  if(!user) return;
+  currentUid = user.uid;
+  const userDoc = await db.collection("users").doc(user.uid).get();
+  currentNom = userDoc.exists ? (userDoc.data().nom || user.email) : user.email;
+  chargerRdvs();
+});
+
+async function chargerRdvs(){
+  const zone = document.getElementById("rdv-liste");
+  const [rdvSnap, coordDoc] = await Promise.all([
+    db.collection("rdvs").orderBy("date").get(),
+    db.collection("settings").doc("facturation").get()
+  ]);
+  const iban = coordDoc.exists ? (coordDoc.data().iban || "à demander à Isabelle") : "à demander à Isabelle";
+
+  if(rdvSnap.empty){ zone.innerHTML = "<p>Aucun événement prévu pour l'instant.</p>"; return; }
+
+  let html = "";
+  for(const doc of rdvSnap.docs){
+    const r = doc.data();
+    const repDoc = await db.collection("rdvReponses").doc(doc.id + "_" + currentUid).get();
+    const rep = repDoc.exists ? repDoc.data() : null;
+    const communication = r.titre + " - " + currentNom;
+
+    html += `<div class="rdv-block">
+      <h3>${r.titre}</h3>
+      <p>${r.date}${r.heure ? " · " + r.heure : ""}${r.lieu ? " · 📍 " + r.lieu : ""}</p>
+      ${r.description ? `<p>${r.description}</p>` : ""}
+      <p><strong>${r.prixParPersonne.toFixed(2)} € / personne</strong></p>`;
+
+    if(!rep){
+      html += `
+        <div class="field"><label>Nombre de personnes</label><input type="number" min="1" value="1" id="nb-${doc.id}" style="width:90px;"></div>
+        <button class="btn btn-primary" onclick="reserverRdv('${doc.id}', ${r.prixParPersonne}, '${r.titre.replace(/'/g,"’")}')">Je viens</button>
+      `;
+    } else {
+      const communicationRep = r.titre + " - " + currentNom;
+      html += `
+        <p>Tu as indiqué venir à <strong>${rep.nombrePersonnes}</strong> personne(s) — montant : <strong>${rep.montant.toFixed(2)} €</strong></p>
+        ${rep.paye
+          ? `<p class="pill paye" style="display:inline-block;">Paiement confirmé par Isabelle</p>`
+          : `
+            <div class="pay-box">
+              <strong>À virer :</strong>
+              IBAN : ${iban}<br>
+              Communication : "${communicationRep}"
+            </div>
+            ${rep.declarePaye
+              ? `<p class="pill" style="display:inline-block; background:var(--gold-lt); color:#8a5a10;">Paiement signalé, en attente de confirmation</p>`
+              : `<button class="btn-small" onclick="declarerPaye('${doc.id}')">J'ai payé</button>`
+            }
+          `
+        }
+      `;
+    }
+    html += `</div>`;
+  }
+  zone.innerHTML = html;
+}
+
+async function reserverRdv(rdvId, prix, titre){
+  const nb = parseInt(document.getElementById("nb-" + rdvId).value) || 1;
+  const montant = prix * nb;
+  await db.collection("rdvReponses").doc(rdvId + "_" + currentUid).set({
+    rdvId, membreUid: currentUid, membreNom: currentNom,
+    nombrePersonnes: nb, montant, paye: false, declarePaye: false
+  });
+  chargerRdvs();
+}
+
+async function declarerPaye(rdvId){
+  await db.collection("rdvReponses").doc(rdvId + "_" + currentUid).update({ declarePaye: true });
+  chargerRdvs();
+}
+</script>
+</body>
+</html>

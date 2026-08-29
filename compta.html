@@ -130,6 +130,7 @@
         <div class="field"><label>Nom</label><input type="text" id="coord-nom"></div>
         <div class="field"><label>Adresse</label><input type="text" id="coord-adresse"></div>
         <div class="field"><label>Numéro d'entreprise</label><input type="text" id="coord-numero"></div>
+        <div class="field"><label>IBAN (pour les paiements RDV)</label><input type="text" id="coord-iban" placeholder="BE00 0000 0000 0000"></div>
         <div id="coord-msg" class="auth-msg"></div>
         <button class="btn btn-primary btn-block" onclick="sauverCoordonnees()">Enregistrer</button>
       </div>
@@ -353,6 +354,7 @@ async function chargerCoordonnees(){
     document.getElementById("coord-nom").value = c.nom || "";
     document.getElementById("coord-adresse").value = c.adresse || "";
     document.getElementById("coord-numero").value = c.numeroEntreprise || "";
+    document.getElementById("coord-iban").value = c.iban || "";
   }
 }
 
@@ -360,7 +362,8 @@ async function sauverCoordonnees(){
   const nom = document.getElementById("coord-nom").value.trim();
   const adresse = document.getElementById("coord-adresse").value.trim();
   const numeroEntreprise = document.getElementById("coord-numero").value.trim();
-  await db.collection("settings").doc("facturation").set({ nom, adresse, numeroEntreprise });
+  const iban = document.getElementById("coord-iban").value.trim();
+  await db.collection("settings").doc("facturation").set({ nom, adresse, numeroEntreprise, iban });
   showMsg(document.getElementById("coord-msg"), "Coordonnées enregistrées.", "ok");
 }
 

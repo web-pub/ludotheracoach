@@ -44,8 +44,13 @@
         <a href="ajouter-membre.html" class="btn-small">Ouvrir →</a>
       </div>
       <div class="dash-card" style="--accent:var(--mauve)">
+        <h3>Événements / RDV</h3>
+        <p>Créer des RDV, suivre réservations et paiements.</p>
+        <a href="rdv-admin.html" class="btn-small">Ouvrir →</a>
+      </div>
+      <div class="dash-card" style="--accent:var(--mauve)">
         <h3>Statut du chantier</h3>
-        <p>Vitrine ✓ · Connexion 3 rôles ✓ · Compta ✓ · Calendriers ✓ · Fiches membres ✓</p>
+        <p>Vitrine ✓ · Connexion 3 rôles ✓ · Compta ✓ · Calendriers ✓ · Fiches membres ✓ · Événements/RDV ✓</p>
         <span class="status">cahier des charges initial complet</span>
       </div>
     </div>
@@ -56,7 +61,7 @@
     </div>
 
     <table class="table" style="margin-bottom:32px;">
-      <thead><tr><th>Nom</th><th>E-mail</th><th>Rôle</th></tr></thead>
+      <thead><tr><th>Nom</th><th>Identifiant</th><th>Rôle</th></tr></thead>
       <tbody id="users-table-body">
         <tr><td colspan="3">Chargement…</td></tr>
       </tbody>
@@ -64,10 +69,10 @@
 
     <div class="dash-card" style="max-width:440px; --accent:var(--ink);">
       <h3>Réinitialiser un mot de passe</h3>
-      <p>Envoie un lien de réinitialisation à l'e-mail d'un utilisateur (admin ou membre).</p>
+      <p>Envoie un lien de réinitialisation à un utilisateur (admin ou membre), à partir de son identifiant.</p>
       <div id="reset-msg" class="auth-msg"></div>
       <div class="field">
-        <input type="email" id="reset-email" placeholder="e-mail de l'utilisateur">
+        <input type="text" id="reset-identifiant" placeholder="identifiant de l'utilisateur">
       </div>
       <button class="btn btn-primary btn-block" onclick="superuserSendReset()">Envoyer le lien</button>
     </div>
@@ -94,19 +99,23 @@
     snap.forEach(doc => {
       const u = doc.data();
       const pillClass = u.role === "superuser" ? "super" : (u.role || "membre");
-      body.innerHTML += `<tr><td>${u.nom || "—"}</td><td>${u.email || "—"}</td><td><span class="pill ${pillClass}">${u.role || "?"}</span></td></tr>`;
+      body.innerHTML += `<tr><td>${u.nom || "—"}</td><td>${u.identifiant || "—"}</td><td><span class="pill ${pillClass}">${u.role || "?"}</span></td></tr>`;
     });
   }).catch(() => {
     document.getElementById("users-table-body").innerHTML = "<tr><td colspan='3'>Impossible de charger la liste (vérifie la configuration Firebase).</td></tr>";
   });
 
-  function superuserSendReset(){
-    const email = document.getElementById("reset-email").value.trim();
+  async function superuserSendReset(){
+    const identifiant = document.getElementById("reset-identifiant").value.trim();
     const msg = document.getElementById("reset-msg");
-    if(!email){ showMsg(msg, "Indique un e-mail.", "error"); return; }
-    auth.sendPasswordResetEmail(email)
-      .then(() => showMsg(msg, "Lien envoyé à " + email + ".", "ok"))
-      .catch(err => showMsg(msg, "Erreur : " + err.message, "error"));
+    if(!identifiant){ showMsg(msg, "Indique un identifiant.", "error"); return; }
+    try{
+      const email = await emailDepuisIdentifiant(identifiant);
+      await auth.sendPasswordResetEmail(email);
+      showMsg(msg, "Lien envoyé pour le compte " + identifiant + ".", "ok");
+    }catch(err){
+      showMsg(msg, "Erreur : " + err.message, "error");
+    }
   }
 </script>
 </body>

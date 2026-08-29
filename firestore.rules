@@ -1,0 +1,86 @@
+rules_version = '2';
+// ===================================================================
+// Règles Firestore — Ludotheracoach
+// À coller dans Firebase Console → Firestore Database → Règles → Publier
+// Ce fichier est tenu à jour à chaque nouvelle version du site (voir
+// le numéro de version en haut du fichier ci-dessous).
+// ===================================================================
+// Version correspondante du site : Isabelle V11
+// ===================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() { return request.auth != null; }
+    function role() {
+      return isSignedIn()
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+        : null;
+    }
+    function isSuperuser() { return role() == 'superuser'; }
+    function isAdmin()     { return role() == 'admin'; }
+    function isOwner(uid)  { return isSignedIn() && request.auth.uid == uid; }
+    function isStaff()     { return isAdmin() || isSuperuser(); }
+
+    // ---------- comptes ----------
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isStaff();
+      allow write: if isSuperuser() || (isAdmin() && uid != request.auth.uid);
+    }
+
+    // mapping identifiant (ex. "helenel") -> e-mail technique, nécessaire
+    // pour retrouver l'e-mail AVANT la connexion (utilisateur pas encore authentifié)
+    match /identifiants/{id} {
+      allow read: if true;
+      allow write: if isStaff();
+    }
+
+    // ---------- fiches membres ----------
+    match /fiches/{uid} {
+      allow read, write: if isOwner(uid) || isStaff();
+    }
+
+    // ---------- calendriers ----------
+    match /disponibilites/{id} {
+      allow read: if isSignedIn();
+      allow write: if isStaff() || isSignedIn();
+    }
+
+    match /evenements/{id} {
+      allow read: if isSignedIn();
+      allow write: if isStaff();
+    }
+
+    // ---------- suivi des membres (type de suivi + événement lié) ----------
+    // couvert par la règle /users/{uid} ci-dessus (mêmes documents)
+
+    // ---------- comptabilité ----------
+    match /factures/{id} {
+      allow read, write: if isStaff();
+    }
+
+    match /fraisCategories/{id} {
+      allow read, write: if isStaff();
+    }
+
+    match /depenses/{id} {
+      allow read, write: if isStaff();
+    }
+
+    match /settings/{id} {
+      allow read: if isSignedIn();
+      allow write: if isStaff();
+    }
+
+    // ---------- événements / RDV avec paiement ----------
+    match /rdvs/{id} {
+      allow read: if isSignedIn();
+      allow write: if isStaff();
+    }
+
+    match /rdvReponses/{id} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn();
+    }
+  }
+}

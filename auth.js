@@ -1,8 +1,11 @@
 // ===================================================================
 // auth.js — connexion, déconnexion, contrôle de rôle, mot de passe oublié
-// Utilise Firebase Authentication + Firestore (collection "users")
-// Chaque doc "users/{uid}" doit contenir : { nom, email, role }
+// Utilise Firebase Authentication + Firestore (collections "users" et "identifiants")
+// Chaque doc "users/{uid}" doit contenir : { nom, email, role, identifiant }
+// Chaque doc "identifiants/{identifiant-en-minuscule}" doit contenir : { email }
 // role attendu : "superuser" | "admin" | "membre"
+// La connexion se fait par IDENTIFIANT (ex. "HeleneL"), pas par e-mail :
+// on retrouve l'e-mail technique associé, puis on se connecte avec Firebase Auth.
 // ===================================================================
 
 firebase.initializeApp(firebaseConfig);
@@ -20,6 +23,13 @@ function showMsg(el, text, type){
   el.className = "auth-msg " + type;
 }
 
+async function emailDepuisIdentifiant(identifiant){
+  const cle = identifiant.trim().toLowerCase();
+  const doc = await db.collection("identifiants").doc(cle).get();
+  if(!doc.exists) throw new Error("Identifiant inconnu.");
+  return doc.data().email;
+}
+
 // ---------- page de connexion ----------
 function initLoginPage(){
   const form = document.getElementById("login-form");
@@ -29,10 +39,11 @@ function initLoginPage(){
   if(form){
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const email = document.getElementById("login-email").value.trim();
+      const identifiant = document.getElementById("login-identifiant").value.trim();
       const password = document.getElementById("login-password").value;
       msg.className = "auth-msg";
       try{
+        const email = await emailDepuisIdentifiant(identifiant);
         const cred = await auth.signInWithEmailAndPassword(email, password);
         const doc = await db.collection("users").doc(cred.user.uid).get();
         if(!doc.exists){
@@ -55,16 +66,17 @@ function initLoginPage(){
   if(resetLink){
     resetLink.addEventListener("click", async (e) => {
       e.preventDefault();
-      const email = document.getElementById("login-email").value.trim();
-      if(!email){
-        showMsg(msg, "Indique ton e-mail ci-dessus puis clique à nouveau sur ce lien.", "error");
+      const identifiant = document.getElementById("login-identifiant").value.trim();
+      if(!identifiant){
+        showMsg(msg, "Indique ton identifiant ci-dessus puis clique à nouveau sur ce lien.", "error");
         return;
       }
       try{
+        const email = await emailDepuisIdentifiant(identifiant);
         await auth.sendPasswordResetEmail(email);
-        showMsg(msg, "E-mail de réinitialisation envoyé à " + email + ".", "ok");
+        showMsg(msg, "E-mail de réinitialisation envoyé.", "ok");
       }catch(err){
-        showMsg(msg, "Impossible d'envoyer l'e-mail : " + err.message, "error");
+        showMsg(msg, "Impossible d'envoyer le lien : " + err.message, "error");
       }
     });
   }

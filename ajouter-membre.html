@@ -24,14 +24,14 @@
     <div class="section-head">
       <span class="eyebrow">nouveau membre</span>
       <h2>Créer un compte membre</h2>
-      <p style="max-width:560px;">L'e-mail ne doit pas forcément être une vraie adresse (comme pour les comptes créés à la main) : utilise par exemple <code>prenom.nom@ludotheracoach.local</code>. Il doit juste être unique.</p>
+      <p style="max-width:560px;">Choisis un identifiant unique pour ce membre (ex. <code>FamilleDupont</code>) — il ne s'agit pas d'une adresse e-mail, c'est ce que la famille tapera pour se connecter.</p>
     </div>
 
     <div id="add-msg" class="auth-msg"></div>
 
     <div class="dash-card" style="max-width:460px; margin-bottom:32px;">
       <div class="field"><label>Nom du membre / de la famille</label><input type="text" id="new-nom" placeholder="ex. Famille Dupont"></div>
-      <div class="field"><label>E-mail (identifiant de connexion)</label><input type="email" id="new-email" placeholder="prenom.nom@ludotheracoach.local"></div>
+      <div class="field"><label>Identifiant de connexion</label><input type="text" id="new-identifiant" placeholder="ex. FamilleDupont"></div>
       <div class="field"><label>Mot de passe</label><input type="text" id="new-password" placeholder="au moins 6 caractères"></div>
       <button class="btn btn-primary btn-block" onclick="creerMembre()">Créer le compte</button>
     </div>
@@ -41,7 +41,7 @@
       <h2>Membres</h2>
     </div>
     <table class="table">
-      <thead><tr><th>Nom</th><th>E-mail</th></tr></thead>
+      <thead><tr><th>Nom</th><th>Identifiant</th></tr></thead>
       <tbody id="membres-table-body"><tr><td colspan="2">Chargement…</td></tr></tbody>
     </table>
 
@@ -59,13 +59,22 @@ guardRoles(["admin","superuser"]);
 async function creerMembre(){
   const msg = document.getElementById("add-msg");
   const nom = document.getElementById("new-nom").value.trim();
-  const email = document.getElementById("new-email").value.trim();
+  const identifiant = document.getElementById("new-identifiant").value.trim();
   const password = document.getElementById("new-password").value;
 
-  if(!nom || !email || password.length < 6){
-    showMsg(msg, "Complète le nom, un e-mail unique et un mot de passe d'au moins 6 caractères.", "error");
+  if(!nom || !identifiant || password.length < 6){
+    showMsg(msg, "Complète le nom, un identifiant unique et un mot de passe d'au moins 6 caractères.", "error");
     return;
   }
+
+  const cle = identifiant.toLowerCase();
+  const dejaPris = await db.collection("identifiants").doc(cle).get();
+  if(dejaPris.exists){
+    showMsg(msg, "Cet identifiant est déjà utilisé, choisis-en un autre.", "error");
+    return;
+  }
+
+  const email = cle + "@ludotheracoach.local";
 
   // On utilise une 2e instance Firebase temporaire pour créer le compte
   // sans déconnecter la personne actuellement connectée (admin/superuser).
@@ -76,11 +85,12 @@ async function creerMembre(){
     const newUid = cred.user.uid;
     await secondaryApp.auth().signOut();
 
-    await db.collection("users").doc(newUid).set({ nom, email, role: "membre" });
+    await db.collection("users").doc(newUid).set({ nom, email, identifiant, role: "membre" });
+    await db.collection("identifiants").doc(cle).set({ email });
 
-    showMsg(msg, "Compte membre créé pour " + nom + ".", "ok");
+    showMsg(msg, "Compte membre créé pour " + nom + " (identifiant : " + identifiant + ").", "ok");
     document.getElementById("new-nom").value = "";
-    document.getElementById("new-email").value = "";
+    document.getElementById("new-identifiant").value = "";
     document.getElementById("new-password").value = "";
     chargerMembres();
   }catch(err){
@@ -97,7 +107,7 @@ async function chargerMembres(){
   body.innerHTML = "";
   snap.forEach(doc => {
     const u = doc.data();
-    body.innerHTML += `<tr><td>${u.nom || "—"}</td><td>${u.email || "—"}</td></tr>`;
+    body.innerHTML += `<tr><td>${u.nom || "—"}</td><td>${u.identifiant || "—"}</td></tr>`;
   });
 }
 

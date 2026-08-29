@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Événements / RDV — LudoThéraCoach</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .inline-form{ display:flex; gap:10px; flex-wrap:wrap; align-items:end; margin-bottom:22px; }
+  .inline-form .field{ margin-bottom:0; }
+  .rdv-block{ background:#fff; border-radius:var(--radius); box-shadow:var(--shadow); padding:24px; margin-bottom:22px; }
+  .rdv-block h3{ margin-bottom:4px; }
+  .pill.oui{ background:var(--turquoise-lt); color:var(--turquoise-dk); }
+  .pill.non{ background:var(--bg-soft); color:var(--ink-soft); }
+  .pill.paye{ background:var(--turquoise-lt); color:var(--turquoise-dk); }
+  .pill.impaye{ background:#FBE4E1; color:#9B3A2E; }
+</style>
+</head>
+<body>
+
+<div class="dash-header">
+  <div class="container">
+    <div class="who">
+      <span class="role-badge admin">Événements / RDV</span>
+      <span data-user-name>...</span>
+    </div>
+    <a href="javascript:history.back()" class="logout-link">← Retour</a>
+  </div>
+</div>
+
+<div class="dash-body">
+  <div class="container">
+
+    <div class="section-head">
+      <span class="eyebrow">créer un rendez-vous</span>
+      <h2>Nouvel événement / RDV</h2>
+    </div>
+
+    <div class="inline-form">
+      <div class="field"><label>Titre</label><input type="text" id="new-titre" placeholder="ex. Sortie de fin d'année"></div>
+      <div class="field"><label>Date</label><input type="date" id="new-date"></div>
+      <div class="field"><label>Heure</label><input type="time" id="new-heure"></div>
+      <div class="field"><label>Lieu</label><input type="text" id="new-lieu"></div>
+      <div class="field"><label>Prix / personne (€)</label><input type="number" step="0.01" id="new-prix" style="width:110px;"></div>
+    </div>
+    <div class="inline-form">
+      <div class="field" style="flex:1; min-width:260px;"><label>Description (optionnel)</label><input type="text" id="new-desc"></div>
+      <button class="btn btn-primary" onclick="creerRdv()">Créer le RDV</button>
+    </div>
+    <div id="rdv-msg" class="auth-msg"></div>
+
+    <div class="section-head">
+      <span class="eyebrow">suivi</span>
+      <h2>Événements / RDV en cours</h2>
+    </div>
+
+    <div id="rdv-liste">Chargement…</div>
+
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="auth.js"></script>
+<script>
+guardRoles(["admin","superuser"]);
+
+async function creerRdv(){
+  const msg = document.getElementById("rdv-msg");
+  const titre = document.getElementById("new-titre").value.trim();
+  const date = document.getElementById("new-date").value;
+  const heure = document.getElementById("new-heure").value;
+  const lieu = document.getElementById("new-lieu").value.trim();
+  const prixParPersonne = parseFloat(document.getElementById("new-prix").value) || 0;
+  const description = document.getElementById("new-desc").value.trim();
+
+  if(!titre || !date){
+    showMsg(msg, "Indique au moins un titre et une date.", "error");
+    return;
+  }
+  await db.collection("rdvs").add({ titre, date, heure, lieu, prixParPersonne, description, dateCreation: new Date().toISOString() });
+  showMsg(msg, "RDV créé.", "ok");
+  document.getElementById("new-titre").value = "";
+  document.getElementById("new-lieu").value = "";
+  document.getElementById("new-desc").value = "";
+  chargerRdvs();
+}
+
+async function chargerRdvs(){
+  const zone = document.getElementById("rdv-liste");
+  const snap = await db.collection("rdvs").orderBy("date").get();
+  if(snap.empty){ zone.innerHTML = "<p>Aucun événement / RDV pour l'instant.</p>"; return; }
+
+  let html = "";
+  for(const doc of snap.docs){
+    const r = doc.data();
+    const reponsesSnap = await db.collection("rdvReponses").where("rdvId","==",doc.id).get();
+    let rows = "";
+    let totalAttendus = 0, totalRecus = 0;
+    reponsesSnap.forEach(rd => {
+      const rep = rd.data();
+      totalAttendus += rep.montant || 0;
+      if(rep.paye) totalRecus += rep.montant || 0;
+      const statutLabel = rep.paye ? "Payé" : (rep.declarePaye ? "Déclaré payé — à confirmer" : "En attente");
+      const statutClass = rep.paye ? "paye" : (rep.declarePaye ? "" : "impaye");
+      rows += `<tr>
+        <td>${rep.membreNom}</td>
+        <td>${rep.nombrePersonnes}</td>
+        <td>${(rep.montant||0).toFixed(2)} €</td>
+        <td><span class="pill ${statutClass}" style="${rep.declarePaye && !rep.paye ? 'background:var(--gold-lt); color:#8a5a10;' : ''}">${statutLabel}</span></td>
+        <td>${!rep.paye ? `<button class="mini-btn" onclick="validerPaiement('${rd.id}')">Marquer payé</button>` : ""}</td>
+      </tr>`;
+    });
+
+    html += `<div class="rdv-block">
+      <h3>${r.titre}</h3>
+      <p>${r.date}${r.heure ? " · " + r.heure : ""}${r.lieu ? " · 📍 " + r.lieu : ""} — ${r.prixParPersonne.toFixed(2)} €/personne</p>
+      ${r.description ? `<p>${r.description}</p>` : ""}
+      <table class="table" style="margin:14px 0;">
+        <thead><tr><th>Membre</th><th>Nb pers.</th><th>Montant</th><th>Statut</th><th></th></tr></thead>
+        <tbody>${rows || "<tr><td colspan='5'>Aucune réponse pour l'instant.</td></tr>"}</tbody>
+      </table>
+      <p style="font-size:.85rem; color:var(--ink-soft);">Total attendu : ${totalAttendus.toFixed(2)} € — reçu : ${totalRecus.toFixed(2)} €</p>
+      <button class="btn-small" onclick="supprimerRdv('${doc.id}')">Supprimer ce RDV</button>
+    </div>`;
+  }
+  zone.innerHTML = html;
+}
+
+async function validerPaiement(reponseId){
+  await db.collection("rdvReponses").doc(reponseId).update({ paye: true });
+  chargerRdvs();
+}
+
+async function supprimerRdv(id){
+  await db.collection("rdvs").doc(id).delete();
+  chargerRdvs();
+}
+
+chargerRdvs();
+</script>
+</body>
+</html>
