@@ -15,6 +15,7 @@
       <span class="role-badge membre" data-user-role>Membre</span>
       <span data-user-name>...</span>
     </div>
+    <a href="index.html" class="logout-link" style="margin-right:8px;">🌐 Retour au site</a>
     <a href="#" class="logout-link" onclick="logoutUser()">Se déconnecter</a>
     </div>
     <nav class="dash-subnav">
@@ -62,14 +63,45 @@ auth.onAuthStateChanged(async (user) => {
 
   // ---- thérapie individuelle (une seule section même si plusieurs suivis "individuel") ----
   if(suivis.some(s => s.type === "individuel")){
-    const snap = await db.collection("disponibilites").orderBy("date").get();
+    const [snap, recSnap, exSnap] = await Promise.all([
+      db.collection("disponibilites").orderBy("date").get(),
+      db.collection("disponibilitesRecurrentes").get(),
+      db.collection("disponibilitesExceptions").get()
+    ]);
+
     const mesCreneaux = [];
     const disponibles = [];
+    const reservationsRecurrentes = {};
     snap.forEach(doc => {
       const d = doc.data();
-      if(d.reserve && d.membreUid === user.uid) mesCreneaux.push({ id: doc.id, ...d });
-      else if(!d.reserve) disponibles.push({ id: doc.id, ...d });
+      if(d.recurrenceId) reservationsRecurrentes[d.recurrenceId + "_" + d.date] = { id: doc.id, ...d };
+      if(!d.recurrenceId){
+        if(d.reserve && d.membreUid === user.uid) mesCreneaux.push({ id: doc.id, ...d });
+        else if(!d.reserve) disponibles.push({ id: doc.id, ...d });
+      } else if(d.reserve && d.membreUid === user.uid){
+        mesCreneaux.push({ id: doc.id, ...d });
+      }
     });
+
+    const exceptions = new Set();
+    exSnap.forEach(doc => exceptions.add(doc.data().recurrenceId + "_" + doc.data().date));
+
+    const aujourdhui = new Date();
+    recSnap.forEach(recDoc => {
+      const r = { id: recDoc.id, ...recDoc.data() };
+      for(let semaine = 0; semaine < 8; semaine++){
+        const d = new Date(aujourdhui);
+        d.setDate(d.getDate() + semaine * 7);
+        const diff = (r.jour - d.getDay() + 7) % 7;
+        d.setDate(d.getDate() + diff);
+        const dateISO = d.toISOString().split("T")[0];
+        const cle = r.id + "_" + dateISO;
+        if(exceptions.has(cle)) continue;
+        if(reservationsRecurrentes[cle]) continue; // déjà réservé par quelqu'un (soi-même déjà listé ci-dessus)
+        disponibles.push({ id: "rec_" + cle, date: dateISO, heureDebut: r.heureDebut, heureFin: r.heureFin, recurrenceId: r.id });
+      }
+    });
+    disponibles.sort((a,b) => a.date.localeCompare(b.date));
 
     html += `<div class="dash-card" style="--accent:var(--turquoise); margin-bottom:20px;">
       <span class="tag" style="color:var(--turquoise);">Thérapie individuelle</span>`;
@@ -82,7 +114,7 @@ auth.onAuthStateChanged(async (user) => {
     html += `<h3 style="font-size:.95rem;">Créneaux disponibles</h3>`;
     html += disponibles.length
       ? `<table class="table"><thead><tr><th>Date</th><th>Horaire</th><th></th></tr></thead><tbody>` +
-        disponibles.map(c => `<tr><td>${c.date}</td><td>${c.heureDebut} – ${c.heureFin}</td><td><button class="btn-small" onclick="reserverCreneau('${c.id}', '${user.uid}')">Réserver</button></td></tr>`).join("") + `</tbody></table>`
+        disponibles.map(c => `<tr><td>${c.date}</td><td>${c.heureDebut} – ${c.heureFin}</td><td><button class="btn-small" onclick="reserverCreneau('${c.id}', '${user.uid}', ${c.recurrenceId ? "'" + c.recurrenceId + "'" : "null"}, '${c.date}', '${c.heureDebut}', '${c.heureFin}')">Réserver</button></td></tr>`).join("") + `</tbody></table>`
       : `<p>Aucun créneau libre pour le moment.</p>`;
     html += `</div>`;
   }
@@ -112,10 +144,14 @@ auth.onAuthStateChanged(async (user) => {
   zone.innerHTML = html;
 });
 
-async function reserverCreneau(id, uid){
+async function reserverCreneau(id, uid, recurrenceId, date, heureDebut, heureFin){
   const userDoc = await db.collection("users").doc(uid).get();
   const nom = userDoc.exists ? (userDoc.data().nom || "") : "";
-  await db.collection("disponibilites").doc(id).update({ reserve: true, membreUid: uid, membreNom: nom });
+  if(id.startsWith("rec_")){
+    await db.collection("disponibilites").add({ date, heureDebut, heureFin, reserve: true, membreUid: uid, membreNom: nom, recurrenceId });
+  } else {
+    await db.collection("disponibilites").doc(id).update({ reserve: true, membreUid: uid, membreNom: nom });
+  }
   location.reload();
 }
 </script>

@@ -90,14 +90,25 @@
       </tbody>
     </table>
 
-    <div class="dash-card" style="max-width:440px; --accent:var(--ink);">
+    <div class="dash-card" style="max-width:440px; --accent:var(--ink); margin-bottom:22px;">
       <h3>Réinitialiser un mot de passe</h3>
-      <p>Envoie un lien de réinitialisation à un utilisateur, à partir de son identifiant.</p>
+      <p>Envoie un lien de réinitialisation à un utilisateur, à partir de son identifiant. ⚠️ Ne fonctionne que si ce compte a une <strong>vraie adresse e-mail</strong> associée (les comptes créés avec une adresse fictive de type <code>@ludotheracoach.local</code> ne recevront jamais ce lien, car aucune boîte mail n'existe derrière). Firebase ne permet à personne — pas même au super user — de consulter un mot de passe existant : c'est une protection universelle, pas une limite de ce site.</p>
       <div id="reset-msg" class="auth-msg"></div>
       <div class="field">
         <input type="text" id="reset-identifiant" placeholder="identifiant de l'utilisateur">
       </div>
       <button class="btn btn-primary btn-block" onclick="superuserSendReset()">Envoyer le lien</button>
+    </div>
+
+    <div class="section-head">
+      <span class="eyebrow">mon compte</span>
+      <h2>Sécurité</h2>
+    </div>
+    <div class="dash-card" style="max-width:420px;">
+      <h3>Modifier mon mot de passe</h3>
+      <div id="pwd-msg" class="auth-msg"></div>
+      <div class="field"><label>Nouveau mot de passe</label><input type="password" id="pwd-nouveau" placeholder="au moins 6 caractères"></div>
+      <button class="btn btn-primary btn-block" onclick="changerMotDePasse()">Enregistrer</button>
     </div>
 
   </div>
@@ -138,6 +149,23 @@
       showMsg(msg, "Lien envoyé pour le compte " + identifiant + ".", "ok");
     }catch(err){
       showMsg(msg, "Erreur : " + err.message, "error");
+    }
+  }
+
+  async function changerMotDePasse(){
+    const msg = document.getElementById("pwd-msg");
+    const nouveau = document.getElementById("pwd-nouveau").value;
+    if(nouveau.length < 6){ showMsg(msg, "Le mot de passe doit faire au moins 6 caractères.", "error"); return; }
+    try{
+      await auth.currentUser.updatePassword(nouveau);
+      showMsg(msg, "Mot de passe modifié.", "ok");
+      document.getElementById("pwd-nouveau").value = "";
+    }catch(err){
+      if(err.code === "auth/requires-recent-login"){
+        showMsg(msg, "Pour des raisons de sécurité, reconnecte-toi puis réessaie tout de suite après.", "error");
+      } else {
+        showMsg(msg, "Erreur : " + err.message, "error");
+      }
     }
   }
 </script>

@@ -135,7 +135,7 @@ async function chargerRdvs(){
         <tbody>${rows || "<tr><td colspan='5'>Aucune réponse pour l'instant.</td></tr>"}</tbody>
       </table>
       <p style="font-size:.85rem; color:var(--ink-soft);">Total attendu : ${totalAttendus.toFixed(2)} € — reçu : ${totalRecus.toFixed(2)} €</p>
-      <button class="btn-small" onclick="supprimerRdv('${doc.id}')">Supprimer ce RDV</button>
+      <button class="btn-small mini-btn-danger" onclick="supprimerRdv('${doc.id}')">Supprimer ce RDV</button>
     </div>`;
   }
   zone.innerHTML = html;

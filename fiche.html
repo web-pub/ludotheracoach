@@ -19,6 +19,7 @@
       <span class="role-badge membre" data-user-role>Membre</span>
       <span data-user-name>...</span>
     </div>
+    <a href="index.html" class="logout-link" style="margin-right:8px;">🌐 Retour au site</a>
     <a href="#" class="logout-link" onclick="logoutUser()">Se déconnecter</a>
     </div>
     <nav class="dash-subnav">
@@ -77,7 +78,7 @@ function ajouterLigneEnfant(nom="", dateNaissance=""){
   row.innerHTML = `
     <div class="field"><label>Nom de l'enfant</label><input type="text" class="enfant-nom" value="${nom}"></div>
     <div class="field"><label>Date de naissance</label><input type="date" class="enfant-date" value="${dateNaissance}"></div>
-    <button class="btn-small" onclick="this.parentElement.remove()">Retirer</button>
+    <button class="btn-small mini-btn-danger" onclick="this.parentElement.remove()">Retirer</button>
   `;
   list.appendChild(row);
 }

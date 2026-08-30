@@ -78,15 +78,15 @@
     </div>
 
     <div class="section-head">
-      <span class="eyebrow">vue d'ensemble</span>
-      <h2>Comptes du site</h2>
-      <p style="max-width:560px;">Vue complète des comptes — la réinitialisation des mots de passe reste réservée au super user.</p>
+      <span class="eyebrow">changer de mot de passe</span>
+      <h2>Sécurité de mon compte</h2>
     </div>
-
-    <table class="table">
-      <thead><tr><th>Nom</th><th>Identifiant</th><th>Rôle</th></tr></thead>
-      <tbody id="users-table-body"><tr><td colspan="3">Chargement…</td></tr></tbody>
-    </table>
+    <div class="dash-card" style="max-width:420px;">
+      <h3>Modifier mon mot de passe</h3>
+      <div id="pwd-msg" class="auth-msg"></div>
+      <div class="field"><label>Nouveau mot de passe</label><input type="password" id="pwd-nouveau" placeholder="au moins 6 caractères"></div>
+      <button class="btn btn-primary btn-block" onclick="changerMotDePasse()">Enregistrer</button>
+    </div>
 
   </div>
 </div>
@@ -100,22 +100,22 @@
 guardRole("admin");
 document.getElementById("version-tag").textContent = SITE_VERSION;
 
-db.collection("users").get().then(snap => {
-  const body = document.getElementById("users-table-body");
-  const docs = snap.docs.filter(doc => doc.data().role !== "superuser");
-  if(docs.length === 0){
-    body.innerHTML = "<tr><td colspan='3'>Aucun utilisateur pour l'instant.</td></tr>";
-    return;
+async function changerMotDePasse(){
+  const msg = document.getElementById("pwd-msg");
+  const nouveau = document.getElementById("pwd-nouveau").value;
+  if(nouveau.length < 6){ showMsg(msg, "Le mot de passe doit faire au moins 6 caractères.", "error"); return; }
+  try{
+    await auth.currentUser.updatePassword(nouveau);
+    showMsg(msg, "Mot de passe modifié.", "ok");
+    document.getElementById("pwd-nouveau").value = "";
+  }catch(err){
+    if(err.code === "auth/requires-recent-login"){
+      showMsg(msg, "Pour des raisons de sécurité, reconnecte-toi puis réessaie tout de suite après.", "error");
+    } else {
+      showMsg(msg, "Erreur : " + err.message, "error");
+    }
   }
-  body.innerHTML = "";
-  docs.forEach(doc => {
-    const u = doc.data();
-    const pillClass = u.role || "membre";
-    body.innerHTML += `<tr><td>${u.nom || "—"}</td><td>${u.identifiant || "—"}</td><td><span class="pill ${pillClass}">${u.role || "?"}</span></td></tr>`;
-  });
-}).catch(() => {
-  document.getElementById("users-table-body").innerHTML = "<tr><td colspan='3'>Impossible de charger la liste (vérifie la configuration Firebase).</td></tr>";
-});
+}
 </script>
 </body>
 </html>

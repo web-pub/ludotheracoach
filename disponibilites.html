@@ -8,6 +8,8 @@
 <style>
   .inline-form{ display:flex; gap:10px; flex-wrap:wrap; align-items:end; margin-bottom:22px; }
   .inline-form .field{ margin-bottom:0; }
+  .pill.libre{ background:var(--turquoise-lt); color:var(--turquoise-dk); }
+  .pill.indispo{ background:var(--bg-soft); color:var(--ink-soft); }
 </style>
 </head>
 <body>
@@ -42,6 +44,39 @@
       <h2>Mes disponibilités</h2>
     </div>
 
+    <div class="section-head" style="margin-bottom:16px;">
+      <h3 style="font-family:var(--body); font-size:1rem; font-weight:700;">Créneaux récurrents (chaque semaine)</h3>
+      <p style="max-width:600px;">Ex. "tous les mercredis de 14h à 18h" — se répète automatiquement chaque semaine. En cas de vacances ou d'imprévu, rends une occurrence précise indisponible plus bas, sans supprimer la règle.</p>
+    </div>
+    <div class="inline-form">
+      <div class="field">
+        <label>Jour</label>
+        <select id="rec-jour">
+          <option value="1">Lundi</option><option value="2">Mardi</option><option value="3">Mercredi</option>
+          <option value="4">Jeudi</option><option value="5">Vendredi</option><option value="6">Samedi</option><option value="0">Dimanche</option>
+        </select>
+      </div>
+      <div class="field"><label>Heure début</label><input type="time" id="rec-debut"></div>
+      <div class="field"><label>Heure fin</label><input type="time" id="rec-fin"></div>
+      <button class="btn btn-primary" onclick="ajouterRecurrence()">Ajouter la règle</button>
+    </div>
+    <div id="rec-msg" class="auth-msg"></div>
+    <table class="table" style="margin-bottom:32px;">
+      <thead><tr><th>Jour</th><th>Horaire</th><th></th></tr></thead>
+      <tbody id="rec-table-body"><tr><td colspan="3">Chargement…</td></tr></tbody>
+    </table>
+
+    <div class="section-head" style="margin-bottom:16px;">
+      <h3 style="font-family:var(--body); font-size:1rem; font-weight:700;">Prochaines occurrences (8 semaines)</h3>
+    </div>
+    <table class="table" style="margin-bottom:32px;">
+      <thead><tr><th>Date</th><th>Horaire</th><th>Statut</th><th></th></tr></thead>
+      <tbody id="occ-table-body"><tr><td colspan="4">Chargement…</td></tr></tbody>
+    </table>
+
+    <div class="section-head" style="margin-bottom:16px;">
+      <h3 style="font-family:var(--body); font-size:1rem; font-weight:700;">Créneaux ponctuels (une seule fois)</h3>
+    </div>
     <div class="inline-form">
       <div class="field"><label>Date</label><input type="date" id="new-date"></div>
       <div class="field"><label>Heure début</label><input type="time" id="new-debut"></div>
@@ -66,6 +101,12 @@
 <script>
 guardRole("admin");
 
+const JOURS_NOMS = ["Dimanche","Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"];
+
+// =====================================================================
+// CRÉNEAUX PONCTUELS (existant)
+// =====================================================================
+
 async function ajouterCreneau(){
   const msg = document.getElementById("dispo-msg");
   const date = document.getElementById("new-date").value;
@@ -75,7 +116,7 @@ async function ajouterCreneau(){
     showMsg(msg, "Complète la date et les deux heures.", "error");
     return;
   }
-  await db.collection("disponibilites").add({ date, heureDebut, heureFin, reserve: false, membreUid: null, membreNom: null });
+  await db.collection("disponibilites").add({ date, heureDebut, heureFin, reserve: false, membreUid: null, membreNom: null, recurrenceId: null });
   showMsg(msg, "Créneau ajouté.", "ok");
   document.getElementById("new-date").value = "";
   chargerCreneaux();
@@ -84,16 +125,17 @@ async function ajouterCreneau(){
 async function chargerCreneaux(){
   const body = document.getElementById("dispo-table-body");
   const snap = await db.collection("disponibilites").orderBy("date").get();
-  if(snap.empty){ body.innerHTML = "<tr><td colspan='4'>Aucun créneau pour l'instant.</td></tr>"; return; }
+  const ponctuels = snap.docs.filter(doc => !doc.data().recurrenceId);
+  if(ponctuels.length === 0){ body.innerHTML = "<tr><td colspan='4'>Aucun créneau ponctuel pour l'instant.</td></tr>"; return; }
   body.innerHTML = "";
-  snap.forEach(doc => {
+  ponctuels.forEach(doc => {
     const d = doc.data();
     const statut = d.reserve ? ("Réservé — " + (d.membreNom || "membre")) : "Libre";
     body.innerHTML += `<tr>
       <td>${d.date}</td>
       <td>${d.heureDebut} – ${d.heureFin}</td>
       <td>${statut}</td>
-      <td><button class="mini-btn" onclick="supprimerCreneau('${doc.id}')">Supprimer</button></td>
+      <td><button class="mini-btn mini-btn-danger" onclick="supprimerCreneau('${doc.id}')">Supprimer</button></td>
     </tr>`;
   });
 }
@@ -103,7 +145,107 @@ async function supprimerCreneau(id){
   chargerCreneaux();
 }
 
+// =====================================================================
+// CRÉNEAUX RÉCURRENTS
+// =====================================================================
+
+async function ajouterRecurrence(){
+  const msg = document.getElementById("rec-msg");
+  const jour = parseInt(document.getElementById("rec-jour").value);
+  const heureDebut = document.getElementById("rec-debut").value;
+  const heureFin = document.getElementById("rec-fin").value;
+  if(!heureDebut || !heureFin){
+    showMsg(msg, "Complète les deux heures.", "error");
+    return;
+  }
+  await db.collection("disponibilitesRecurrentes").add({ jour, heureDebut, heureFin });
+  showMsg(msg, "Créneau récurrent ajouté.", "ok");
+  chargerRecurrences();
+}
+
+async function chargerRecurrences(){
+  const body = document.getElementById("rec-table-body");
+  const snap = await db.collection("disponibilitesRecurrentes").get();
+  if(snap.empty){ body.innerHTML = "<tr><td colspan='3'>Aucun créneau récurrent pour l'instant.</td></tr>"; }
+  else{
+    body.innerHTML = "";
+    snap.forEach(doc => {
+      const r = doc.data();
+      body.innerHTML += `<tr>
+        <td>${JOURS_NOMS[r.jour]}</td>
+        <td>${r.heureDebut} – ${r.heureFin}</td>
+        <td><button class="mini-btn mini-btn-danger" onclick="supprimerRecurrence('${doc.id}')">Supprimer la règle</button></td>
+      </tr>`;
+    });
+  }
+  chargerOccurrences();
+}
+
+async function supprimerRecurrence(id){
+  if(!confirm("Supprimer cette règle récurrente ? Les réservations déjà prises restent inchangées.")) return;
+  await db.collection("disponibilitesRecurrentes").doc(id).delete();
+  chargerRecurrences();
+}
+
+function dateVersISO(d){
+  return d.toISOString().split("T")[0];
+}
+
+async function chargerOccurrences(){
+  const body = document.getElementById("occ-table-body");
+  const [recSnap, exSnap, resSnap] = await Promise.all([
+    db.collection("disponibilitesRecurrentes").get(),
+    db.collection("disponibilitesExceptions").get(),
+    db.collection("disponibilites").get()
+  ]);
+
+  if(recSnap.empty){ body.innerHTML = "<tr><td colspan='4'>Ajoute d'abord un créneau récurrent ci-dessus.</td></tr>"; return; }
+
+  const exceptions = new Set();
+  exSnap.forEach(doc => exceptions.add(doc.data().recurrenceId + "_" + doc.data().date));
+
+  const reservations = {};
+  resSnap.forEach(doc => {
+    const r = doc.data();
+    if(!r.recurrenceId) return;
+    reservations[r.recurrenceId + "_" + r.date] = { id: doc.id, ...r };
+  });
+
+  const occurrences = [];
+  const aujourdhui = new Date();
+  recSnap.forEach(recDoc => {
+    const r = { id: recDoc.id, ...recDoc.data() };
+    for(let semaine = 0; semaine < 8; semaine++){
+      const d = new Date(aujourdhui);
+      d.setDate(d.getDate() + semaine * 7);
+      const diff = (r.jour - d.getDay() + 7) % 7;
+      d.setDate(d.getDate() + diff);
+      const dateISO = dateVersISO(d);
+      const cle = r.id + "_" + dateISO;
+      if(exceptions.has(cle)) continue; // rendu indisponible par Isabelle
+      const resa = reservations[cle];
+      occurrences.push({ recurrenceId: r.id, date: dateISO, heureDebut: r.heureDebut, heureFin: r.heureFin, reserve: !!resa, membreNom: resa ? resa.membreNom : null });
+    }
+  });
+  occurrences.sort((a,b) => a.date.localeCompare(b.date));
+
+  if(occurrences.length === 0){ body.innerHTML = "<tr><td colspan='4'>Toutes les occurrences à venir ont été rendues indisponibles.</td></tr>"; return; }
+
+  body.innerHTML = occurrences.map(o => `<tr>
+    <td>${o.date}</td>
+    <td>${o.heureDebut} – ${o.heureFin}</td>
+    <td>${o.reserve ? `<span class="pill">Réservé — ${o.membreNom || "membre"}</span>` : `<span class="pill libre">Libre</span>`}</td>
+    <td>${o.reserve ? "" : `<button class="mini-btn mini-btn-danger" onclick="rendreIndisponible('${o.recurrenceId}', '${o.date}')">Rendre indisponible</button>`}</td>
+  </tr>`).join("");
+}
+
+async function rendreIndisponible(recurrenceId, date){
+  await db.collection("disponibilitesExceptions").add({ recurrenceId, date });
+  chargerOccurrences();
+}
+
 chargerCreneaux();
+chargerRecurrences();
 </script>
 </body>
 </html>

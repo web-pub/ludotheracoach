@@ -21,7 +21,6 @@
     padding:14px 18px; border-radius:12px; margin-bottom:24px;
   }
   input.montant{ width:110px; text-align:right; }
-  .mini-btn{ background:none; border:none; cursor:pointer; color:var(--turquoise-dk); font-size:.85rem; font-weight:600; }
 </style>
 </head>
 <body>
@@ -110,19 +109,29 @@
       <div class="inline-form">
         <div class="field"><label>Année</label><input type="number" id="achats-annee" value="2025" min="2025" style="width:100px;"></div>
         <div class="field"><label>Fournisseur</label><input type="text" id="new-dep-fournisseur" placeholder="ex. Delhaize"></div>
-        <div class="field"><label>Montant TVAC (€)</label><input type="number" id="new-dep-montant" style="width:110px;"></div>
+        <div class="field"><label>Montant total TVAC (€)</label><input type="number" id="new-dep-montant" style="width:120px;"></div>
         <div class="field">
           <label>Type de frais</label>
           <select id="new-dep-categorie"></select>
         </div>
         <div class="field"><label>Date</label><input type="date" id="new-dep-date"></div>
+      </div>
+      <div class="inline-form" style="margin-top:-6px;">
+        <label style="display:flex; align-items:center; gap:8px; font-size:.88rem; font-weight:600; color:var(--ink-soft);">
+          <input type="checkbox" id="new-dep-amorti" onchange="toggleAmortissement()" style="width:auto;">
+          Répartir sur plusieurs années (bien amortissable, ex. matériel informatique)
+        </label>
+        <div class="field" id="amorti-annees-field" style="display:none;">
+          <label>Sur combien d'années</label>
+          <input type="number" id="new-dep-annees" value="3" min="2" max="10" style="width:80px;">
+        </div>
         <button class="btn-small" id="achats-ajouter-btn" onclick="ajouterDepense()">Ajouter la dépense</button>
       </div>
       <div id="achats-msg" class="auth-msg"></div>
 
       <table class="table">
-        <thead><tr><th>N° pièce</th><th>Date</th><th>Fournisseur</th><th>Catégorie</th><th>Montant TVAC</th><th>% déd.</th><th>Montant déductible</th><th></th></tr></thead>
-        <tbody id="depenses-table-body"><tr><td colspan="8">Chargement…</td></tr></tbody>
+        <thead><tr><th>N° pièce</th><th>Date</th><th>Fournisseur</th><th>Catégorie</th><th>Montant retenu cette année</th><th>% déd.</th><th>Montant déductible</th><th>Amorti</th><th></th></tr></thead>
+        <tbody id="depenses-table-body"><tr><td colspan="9">Chargement…</td></tr></tbody>
       </table>
       <p id="achats-total" style="font-weight:600; margin-top:14px;"></p>
 
@@ -233,8 +242,13 @@ const CATEGORIES_VENTE = ["Atelier", "Thérapeute", "Formation"];
 // =====================================================================
 
 async function estAnneeCloturee(annee){
-  const doc = await db.collection("cloturesComptables").doc(String(annee)).get();
-  return doc.exists && doc.data().cloturee === true;
+  try{
+    const doc = await db.collection("cloturesComptables").doc(String(annee)).get();
+    return doc.exists && doc.data().cloturee === true;
+  }catch(err){
+    console.error("Impossible de vérifier le statut de clôture :", err);
+    return false; // en cas de souci de permissions/réseau, on n'empêche pas l'encodage
+  }
 }
 
 function bannerCloture(dateCloture){
@@ -448,6 +462,11 @@ async function ajouterCategorie(){
   chargerCategories();
 }
 
+function toggleAmortissement(){
+  const coche = document.getElementById("new-dep-amorti").checked;
+  document.getElementById("amorti-annees-field").style.display = coche ? "block" : "none";
+}
+
 async function ajouterDepense(){
   const msg = document.getElementById("achats-msg");
   const annee = parseInt(document.getElementById("achats-annee").value) || 2025;
@@ -455,26 +474,57 @@ async function ajouterDepense(){
   const montant = parseFloat(document.getElementById("new-dep-montant").value);
   const categorieId = document.getElementById("new-dep-categorie").value;
   const date = document.getElementById("new-dep-date").value;
-  if(!fournisseur || isNaN(montant) || !categorieId){
-    showMsg(msg, "Complète fournisseur, montant et catégorie.", "error");
-    return;
-  }
-  if(await estAnneeCloturee(annee)){
-    showMsg(msg, "Cette année est clôturée — rouvre-la depuis l'onglet P&L pour ajouter une dépense.", "error");
-    return;
-  }
+  const amorti = document.getElementById("new-dep-amorti").checked;
+  const nombreAnnees = amorti ? (parseInt(document.getElementById("new-dep-annees").value) || 3) : 1;
 
-  // numéro de pièce comptable séquentiel pour l'année (à noter sur le justificatif papier)
-  const snapAnnee = await db.collection("depenses").where("annee","==",annee).get();
-  let dernierNumero = 0;
-  snapAnnee.forEach(d => { if((d.data().numeroPiece || 0) > dernierNumero) dernierNumero = d.data().numeroPiece; });
-  const numeroPiece = dernierNumero + 1;
+  try{
+    if(!fournisseur || isNaN(montant) || !categorieId){
+      showMsg(msg, "Complète fournisseur, montant et catégorie avant d'ajouter.", "error");
+      return;
+    }
 
-  await db.collection("depenses").add({ annee, fournisseur, montantTVAC: montant, categorieId, date, numeroPiece });
-  document.getElementById("new-dep-fournisseur").value = "";
-  document.getElementById("new-dep-montant").value = "";
-  showMsg(msg, "Dépense ajoutée — numéro de pièce à noter sur le justificatif : " + annee + " D" + String(numeroPiece).padStart(3,"0"), "ok");
-  chargerDepenses();
+    // contrôle de cohérence date de la pièce / année d'encodage
+    if(date){
+      const anneeDate = parseInt(date.split("-")[0]);
+      if(anneeDate !== annee){
+        const continuer = confirm(
+          "La date du justificatif (" + date + ") ne correspond pas à l'année d'encodage (" + annee + ").\n\nContinuer quand même ?"
+        );
+        if(!continuer){
+          showMsg(msg, "Ajout annulé — vérifie la date ou l'année.", "error");
+          return;
+        }
+      }
+    }
+
+    if(await estAnneeCloturee(annee)){
+      showMsg(msg, "Cette année est clôturée — rouvre-la depuis l'onglet P&L pour ajouter une dépense.", "error");
+      return;
+    }
+
+    // numéro de pièce comptable séquentiel pour l'année (à noter sur le justificatif papier)
+    const snapAnnee = await db.collection("depenses").where("annee","==",annee).get();
+    let dernierNumero = 0;
+    snapAnnee.forEach(d => { if((d.data().numeroPiece || 0) > dernierNumero) dernierNumero = d.data().numeroPiece; });
+    const numeroPiece = dernierNumero + 1;
+
+    await db.collection("depenses").add({
+      annee, fournisseur, montantTVAC: montant, categorieId, date, numeroPiece,
+      amorti, nombreAnnees
+    });
+
+    document.getElementById("new-dep-fournisseur").value = "";
+    document.getElementById("new-dep-montant").value = "";
+    document.getElementById("new-dep-amorti").checked = false;
+    toggleAmortissement();
+
+    const suffixe = amorti ? (" — répartie sur " + nombreAnnees + " ans (" + (montant/nombreAnnees).toFixed(2) + " €/an)") : "";
+    showMsg(msg, "Dépense ajoutée — numéro de pièce à noter sur le justificatif : " + annee + " D" + String(numeroPiece).padStart(3,"0") + suffixe, "ok");
+    chargerDepenses();
+  }catch(err){
+    showMsg(msg, "Erreur lors de l'ajout : " + err.message, "error");
+    console.error(err);
+  }
 }
 
 async function chargerDepenses(){
@@ -484,30 +534,47 @@ async function chargerDepenses(){
   const categories = {};
   catSnap.forEach(d => categories[d.id] = d.data());
 
-  const snap = await db.collection("depenses").where("annee","==",annee).orderBy("numeroPiece").get();
+  // on récupère TOUTES les dépenses (une dépense amortie créée une autre année
+  // peut concerner l'année affichée) puis on filtre/proratise côté client
+  const snap = await db.collection("depenses").get();
   const body = document.getElementById("depenses-table-body");
-  if(snap.empty){ body.innerHTML = "<tr><td colspan='8'>Aucune dépense pour " + annee + ".</td></tr>"; document.getElementById("achats-total").textContent=""; return; }
-  body.innerHTML = "";
-  let total = 0, totalDeductible = 0;
+
+  const lignes = [];
   snap.forEach(doc => {
     const d = doc.data();
+    const nbAnnees = d.amorti ? (d.nombreAnnees || 1) : 1;
+    const derniereAnnee = d.annee + nbAnnees - 1;
+    if(annee < d.annee || annee > derniereAnnee) return; // ne concerne pas l'année affichée
+
+    const montantRetenu = d.amorti ? (d.montantTVAC / nbAnnees) : d.montantTVAC;
+    const partActuelle = annee - d.annee + 1;
+    lignes.push({ id: doc.id, ...d, montantRetenu, partActuelle, nbAnnees });
+  });
+  lignes.sort((a,b) => (a.numeroPiece||0) - (b.numeroPiece||0));
+
+  if(lignes.length === 0){ body.innerHTML = "<tr><td colspan='9'>Aucune dépense pour " + annee + ".</td></tr>"; document.getElementById("achats-total").textContent=""; return; }
+  body.innerHTML = "";
+  let total = 0, totalDeductible = 0;
+  lignes.forEach(d => {
     const cat = categories[d.categorieId] || { nom: "?", deductibilite: 0 };
-    const deductible = d.montantTVAC * (cat.deductibilite/100);
-    total += d.montantTVAC; totalDeductible += deductible;
-    const numeroAffiche = d.numeroPiece ? (annee + " D" + String(d.numeroPiece).padStart(3,"0")) : "—";
+    const deductible = d.montantRetenu * (cat.deductibilite/100);
+    total += d.montantRetenu; totalDeductible += deductible;
+    const numeroAffiche = d.numeroPiece ? (d.annee + " D" + String(d.numeroPiece).padStart(3,"0")) : "—";
+    const amortiTag = d.amorti ? `<span class="pill" style="background:var(--mauve-lt); color:var(--mauve-dk);">${d.partActuelle}/${d.nbAnnees}</span>` : "—";
     body.innerHTML += `<tr>
       <td><strong>${numeroAffiche}</strong></td>
       <td>${d.date || "—"}</td>
       <td>${d.fournisseur}</td>
       <td>${cat.nom}</td>
-      <td>${d.montantTVAC.toFixed(2)} €</td>
+      <td>${d.montantRetenu.toFixed(2)} €${d.amorti ? ` <span style="font-size:.78rem; color:var(--ink-soft);">(sur ${d.montantTVAC.toFixed(2)} €)</span>` : ""}</td>
       <td>${cat.deductibilite}%</td>
       <td>${deductible.toFixed(2)} €</td>
-      <td>${cloturee ? "" : `<button class="mini-btn" onclick="supprimerDepense('${doc.id}')">Supprimer</button>`}</td>
+      <td>${amortiTag}</td>
+      <td>${cloturee ? "" : `<button class="mini-btn mini-btn-danger" onclick="supprimerDepense('${d.id}')">Supprimer</button>`}</td>
     </tr>`;
   });
   document.getElementById("achats-total").textContent =
-    "Total dépenses " + annee + " : " + total.toFixed(2) + " € TVAC — dont " + totalDeductible.toFixed(2) + " € déductibles.";
+    "Total dépenses " + annee + " : " + total.toFixed(2) + " € retenus — dont " + totalDeductible.toFixed(2) + " € déductibles.";
 }
 
 async function supprimerDepense(id){
@@ -524,7 +591,7 @@ async function chargerPL(){
 
   const [facturesSnap, depensesSnap, catSnap] = await Promise.all([
     db.collection("factures").where("annee","==",annee).get(),
-    db.collection("depenses").where("annee","==",annee).get(),
+    db.collection("depenses").get(),
     db.collection("fraisCategories").get()
   ]);
 
@@ -537,19 +604,23 @@ async function chargerPL(){
     totalVentes += f.montant || 0;
   });
 
-  // achats par catégorie
+  // achats par catégorie, avec proratisation des biens amortis
   const categories = {};
   catSnap.forEach(d => categories[d.id] = d.data());
   const achatsParCat = {};
   let totalAchats = 0, totalDeductible = 0;
   depensesSnap.forEach(doc => {
     const d = doc.data();
+    const nbAnnees = d.amorti ? (d.nombreAnnees || 1) : 1;
+    const derniereAnnee = d.annee + nbAnnees - 1;
+    if(annee < d.annee || annee > derniereAnnee) return;
+    const montantRetenu = d.amorti ? (d.montantTVAC / nbAnnees) : d.montantTVAC;
     const cat = categories[d.categorieId] || { nom: "Autre", deductibilite: 0 };
     if(!achatsParCat[cat.nom]) achatsParCat[cat.nom] = { montant: 0, deductible: 0 };
-    achatsParCat[cat.nom].montant += d.montantTVAC || 0;
-    achatsParCat[cat.nom].deductible += (d.montantTVAC || 0) * (cat.deductibilite/100);
-    totalAchats += d.montantTVAC || 0;
-    totalDeductible += (d.montantTVAC || 0) * (cat.deductibilite/100);
+    achatsParCat[cat.nom].montant += montantRetenu;
+    achatsParCat[cat.nom].deductible += montantRetenu * (cat.deductibilite/100);
+    totalAchats += montantRetenu;
+    totalDeductible += montantRetenu * (cat.deductibilite/100);
   });
 
   document.getElementById("pl-ca").textContent = totalVentes.toFixed(2) + " €";

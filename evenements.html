@@ -135,7 +135,7 @@ async function chargerEvenements(){
       <td>${prix > 0 ? ca + " €" : "—"}</td>
       <td>
         ${prix > 0 ? `<button class="mini-btn" onclick="toggleInscriptions('${doc.id}')">Inscriptions</button>` : ""}
-        <button class="mini-btn" onclick="supprimerEvenement('${doc.id}')">Supprimer</button>
+        <button class="mini-btn mini-btn-danger" onclick="supprimerEvenement('${doc.id}')">Supprimer</button>
       </td>
     </tr>
     ${prix > 0 ? `<tr class="fiche-detail" id="inscr-${doc.id}"><td colspan="9"><div id="inscr-body-${doc.id}">Chargement…</div></td></tr>` : ""}`;

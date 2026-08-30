@@ -45,22 +45,22 @@
 <div class="dash-body">
   <div class="container">
 
-    <div class="section-head">
-      <span class="eyebrow">nouveau membre</span>
-      <h2>Ajouter un membre</h2>
-      <p style="max-width:560px;">Choisis un identifiant unique pour ce membre (ex. <code>FamilleDupont</code>) — il ne s'agit pas d'une adresse e-mail, c'est ce que la famille tapera pour se connecter.</p>
+    <div class="section-head" style="display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:16px;">
+      <div>
+        <span class="eyebrow">familles suivies</span>
+        <h2>Membres</h2>
+      </div>
+      <button class="btn btn-primary" onclick="toggleFormAjout()" id="toggle-ajout-btn">+ Ajouter un membre</button>
     </div>
+
     <div id="add-msg" class="auth-msg"></div>
-    <div class="dash-card" style="max-width:460px; margin-bottom:36px;">
+    <div class="dash-card" id="form-ajout" style="max-width:460px; margin-bottom:28px; display:none;">
+      <h3>Nouveau membre</h3>
+      <p style="font-size:.85rem;">Choisis un identifiant unique (ex. <code>FamilleDupont</code>) — ce n'est pas une adresse e-mail, c'est ce que la famille tapera pour se connecter.</p>
       <div class="field"><label>Nom du membre / de la famille</label><input type="text" id="new-nom" placeholder="ex. Famille Dupont"></div>
       <div class="field"><label>Identifiant de connexion</label><input type="text" id="new-identifiant" placeholder="ex. FamilleDupont"></div>
       <div class="field"><label>Mot de passe</label><input type="text" id="new-password" placeholder="au moins 6 caractères"></div>
       <button class="btn btn-primary btn-block" onclick="creerMembre()">Créer le compte</button>
-    </div>
-
-    <div class="section-head">
-      <span class="eyebrow">familles suivies</span>
-      <h2>Fiches membres</h2>
     </div>
 
     <table class="table">
@@ -78,6 +78,12 @@
 <script src="auth.js"></script>
 <script>
 guardRole("admin");
+
+function toggleFormAjout(){
+  const form = document.getElementById("form-ajout");
+  const ouvert = form.style.display !== "none";
+  form.style.display = ouvert ? "none" : "block";
+}
 
 // =====================================================================
 // AJOUTER UN MEMBRE
@@ -117,6 +123,7 @@ async function creerMembre(){
     document.getElementById("new-nom").value = "";
     document.getElementById("new-identifiant").value = "";
     document.getElementById("new-password").value = "";
+    toggleFormAjout();
     chargerFiches();
   }catch(err){
     showMsg(msg, "Erreur : " + err.message, "error");
@@ -151,7 +158,7 @@ async function chargerFiches(){
       <td style="cursor:pointer;" onclick="toggleDetail('${uid}')">${nbEnfants}</td>
       <td>
         <button class="mini-btn" onclick="toggleDetail('${uid}')">Voir</button>
-        <button class="mini-btn" onclick="toggleArchive('${uid}', ${actif})">${actif ? "Archiver" : "Réactiver"}</button>
+        <button class="mini-btn ${actif ? "mini-btn-danger" : ""}" onclick="toggleArchive('${uid}', ${actif})">${actif ? "Archiver" : "Réactiver"}</button>
       </td>
     </tr>
     <tr class="fiche-detail" id="detail-${uid}">
@@ -174,7 +181,7 @@ async function chargerFiches(){
               <div class="enfant-row">
                 <div class="field"><label>Nom de l'enfant</label><input type="text" class="ep-enfant-nom" value="${e.nom || ""}"></div>
                 <div class="field"><label>Date de naissance</label><input type="date" class="ep-enfant-date" value="${e.dateNaissance || ""}"></div>
-                <button class="mini-btn" onclick="this.parentElement.remove()">Retirer</button>
+                <button class="mini-btn mini-btn-danger" onclick="this.parentElement.remove()">Retirer</button>
               </div>`).join("")}
           </div>
           <button class="mini-btn" onclick="ajouterLigneEnfantEdit('${uid}')">+ Ajouter un enfant</button>
@@ -209,7 +216,7 @@ function ajouterLigneEnfantEdit(uid){
   row.innerHTML = `
     <div class="field"><label>Nom de l'enfant</label><input type="text" class="ep-enfant-nom" value=""></div>
     <div class="field"><label>Date de naissance</label><input type="date" class="ep-enfant-date" value=""></div>
-    <button class="mini-btn" onclick="this.parentElement.remove()">Retirer</button>
+    <button class="mini-btn mini-btn-danger" onclick="this.parentElement.remove()">Retirer</button>
   `;
   list.appendChild(row);
 }

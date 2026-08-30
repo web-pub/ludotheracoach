@@ -324,7 +324,28 @@ footer .brand-text span{ justify-content:center; }
 .btn-small{
   font-size:.78rem; font-weight:600; padding:6px 12px; border-radius:100px;
   border:1.5px solid rgba(42,39,51,.14); background:#fff; cursor:pointer; text-decoration:none; color:var(--ink);
+  transition:background .18s, border-color .18s, transform .15s;
 }
+.btn-small:hover{ background:var(--bg-soft); transform:translateY(-1px); }
+
+/* petits boutons d'action inline (tableaux) — cohérents avec l'identité douce du site */
+.mini-btn{
+  display:inline-flex; align-items:center; gap:4px;
+  font-family:var(--body); font-size:.78rem; font-weight:600;
+  padding:6px 14px; border-radius:100px;
+  border:1.5px solid var(--turquoise-lt); background:#fff; color:var(--turquoise-dk);
+  cursor:pointer; text-decoration:none;
+  transition:background .18s ease, border-color .18s ease, transform .15s ease;
+}
+.mini-btn:hover{ background:var(--turquoise-lt); transform:translateY(-1px); }
+.mini-btn:active{ transform:translateY(0); }
+
+/* variante pour les actions destructives (Supprimer, Archiver, Retirer) —
+   ton corail doux plutôt qu'un rouge alarmant, pour rester dans l'esprit du site */
+.mini-btn-danger{
+  border-color:#F3D6CF; color:#B85C4A;
+}
+.mini-btn-danger:hover{ background:#FBE8E3; border-color:#F3D6CF; }
 
 /* sous-navigation de l'espace privé (onglets), même esprit que le site des Cabots */
 .dash-subnav{

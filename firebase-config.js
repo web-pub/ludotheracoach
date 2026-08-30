@@ -20,4 +20,4 @@ const firebaseConfig = {
 
 // Numéro de version affiché en mode Super user et Admin, pour vérifier
 // facilement que la dernière version est bien déployée.
-const SITE_VERSION = "Isabelle V17";
+const SITE_VERSION = "Isabelle V18";
