@@ -83,32 +83,13 @@
       <p style="max-width:560px;">Vue complète de tous les comptes (admin, membres, super users) et outil de réinitialisation de mot de passe.</p>
     </div>
 
-    <table class="table" style="margin-bottom:32px;">
+    <table class="table">
       <thead><tr><th>Nom</th><th>Identifiant</th><th>Mot de passe</th><th>Rôle</th><th>Dernière connexion</th><th></th></tr></thead>
       <tbody id="users-table-body">
         <tr><td colspan="6">Chargement…</td></tr>
       </tbody>
     </table>
-
-    <div class="dash-card" id="reset-tool" style="max-width:460px; --accent:var(--ink); margin-bottom:22px;">
-      <h3>Réinitialiser un mot de passe</h3>
-      <p style="font-size:.85rem;">Définit un nouveau mot de passe immédiatement, sans avoir besoin de l'ancien. Il apparaîtra dans le tableau ci-dessus juste après.</p>
-      <div id="reset-msg" class="auth-msg"></div>
-      <div class="field"><label>Identifiant du compte</label><input type="text" id="reset-identifiant" placeholder="ex. FamilleDupont"></div>
-      <div class="field"><label>Nouveau mot de passe</label><input type="text" id="reset-nouveau-mdp" placeholder="au moins 6 caractères"></div>
-      <button class="btn btn-primary btn-block" onclick="forcerNouveauMdp()">Définir ce mot de passe</button>
-    </div>
-
-    <div class="section-head">
-      <span class="eyebrow">mon compte</span>
-      <h2>Sécurité</h2>
-    </div>
-    <div class="dash-card" style="max-width:420px;">
-      <h3>Modifier mon mot de passe</h3>
-      <div id="pwd-msg" class="auth-msg"></div>
-      <div class="field"><label>Nouveau mot de passe</label><input type="password" id="pwd-nouveau" placeholder="au moins 6 caractères"></div>
-      <button class="btn btn-primary btn-block" onclick="changerMotDePasse()">Enregistrer</button>
-    </div>
+    <div id="reset-msg" class="auth-msg"></div>
 
   </div>
 </div>
@@ -140,7 +121,7 @@
         const u = doc.data();
         const pillClass = u.role === "superuser" ? "super" : (u.role || "membre");
         const estMoi = doc.id === auth.currentUser.uid;
-        body.innerHTML += `<tr><td>${u.nom || "—"}</td><td>${u.identifiant || "—"}</td><td>${u.motDePasse || "—"}</td><td><span class="pill ${pillClass}">${u.role || "?"}</span></td><td>${formatDate(u.derniereConnexion)}</td><td>${estMoi ? "" : `<button class="mini-btn" onclick="preparerReset('${u.identifiant}')">Réinitialiser</button>`}</td></tr>`;
+        body.innerHTML += `<tr><td>${u.nom || "—"}</td><td>${u.identifiant || "—"}</td><td>${u.motDePasse || "—"}</td><td><span class="pill ${pillClass}">${u.role || "?"}</span></td><td>${formatDate(u.derniereConnexion)}</td><td>${estMoi ? "" : `<button class="mini-btn" onclick="reinitialiserRapide('${u.identifiant}')">Réinitialiser</button>`}</td></tr>`;
       });
     }).catch(() => {
       document.getElementById("users-table-body").innerHTML = "<tr><td colspan='6'>Impossible de charger la liste (vérifie la configuration Firebase).</td></tr>";
@@ -148,19 +129,12 @@
   }
   chargerComptes();
 
-  function preparerReset(identifiant){
-    document.getElementById("reset-identifiant").value = identifiant;
-    document.getElementById("reset-nouveau-mdp").focus();
-    document.getElementById("reset-tool").scrollIntoView({ behavior:"smooth", block:"center" });
-  }
-
-  async function forcerNouveauMdp(){
+  async function reinitialiserRapide(identifiant){
+    const nouveauMdp = prompt("Nouveau mot de passe pour " + identifiant + " (6 caractères minimum) :");
+    if(nouveauMdp === null) return; // annulé
     const msg = document.getElementById("reset-msg");
-    const identifiant = document.getElementById("reset-identifiant").value.trim();
-    const nouveauMdp = document.getElementById("reset-nouveau-mdp").value;
-
-    if(!identifiant || nouveauMdp.length < 6){
-      showMsg(msg, "Indique l'identifiant et un mot de passe d'au moins 6 caractères.", "error");
+    if(nouveauMdp.length < 6){
+      showMsg(msg, "Le mot de passe doit faire au moins 6 caractères.", "error");
       return;
     }
 
@@ -177,11 +151,6 @@
       const oldUid = oldDoc.id;
       const oldData = oldDoc.data();
 
-      if(oldUid === auth.currentUser.uid){
-        showMsg(msg, "Utilise plutôt 'Modifier mon mot de passe' ci-dessous pour ton propre compte.", "error");
-        return;
-      }
-
       const nouvelEmail = cle + "-r" + Date.now() + "@ludotheracoach.local";
 
       secondaryApp = firebase.initializeApp(firebaseConfig, "reset-" + Date.now());
@@ -189,7 +158,6 @@
       const newUid = cred.user.uid;
       await secondaryApp.auth().signOut();
 
-      // recopier le profil sous le nouveau compte
       await db.collection("users").doc(newUid).set({ ...oldData, email: nouvelEmail, motDePasse: nouveauMdp });
       await db.collection("identifiants").doc(cle).set({ email: nouvelEmail });
 
@@ -215,32 +183,12 @@
 
       await db.collection("users").doc(oldUid).delete();
 
-      showMsg(msg, "Nouveau mot de passe défini pour " + identifiant + ". Il peut se reconnecter immédiatement.", "ok");
-      document.getElementById("reset-identifiant").value = "";
-      document.getElementById("reset-nouveau-mdp").value = "";
+      showMsg(msg, "Nouveau mot de passe défini pour " + identifiant + ".", "ok");
       chargerComptes();
     }catch(err){
       showMsg(msg, "Erreur : " + err.message, "error");
     }finally{
       if(secondaryApp) secondaryApp.delete();
-    }
-  }
-
-  async function changerMotDePasse(){
-    const msg = document.getElementById("pwd-msg");
-    const nouveau = document.getElementById("pwd-nouveau").value;
-    if(nouveau.length < 6){ showMsg(msg, "Le mot de passe doit faire au moins 6 caractères.", "error"); return; }
-    try{
-      await auth.currentUser.updatePassword(nouveau);
-    await db.collection("users").doc(auth.currentUser.uid).update({ motDePasse: nouveau });
-      showMsg(msg, "Mot de passe modifié.", "ok");
-      document.getElementById("pwd-nouveau").value = "";
-    }catch(err){
-      if(err.code === "auth/requires-recent-login"){
-        showMsg(msg, "Pour des raisons de sécurité, reconnecte-toi puis réessaie tout de suite après.", "error");
-      } else {
-        showMsg(msg, "Erreur : " + err.message, "error");
-      }
     }
   }
 </script>

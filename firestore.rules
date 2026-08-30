@@ -5,7 +5,7 @@ rules_version = '2';
 // Ce fichier est tenu à jour à chaque nouvelle version du site (voir
 // le numéro de version en haut du fichier ci-dessous).
 // ===================================================================
-// Version correspondante du site : Isabelle V21
+// Version correspondante du site : Isabelle V23
 // ===================================================================
 
 service cloud.firestore {
