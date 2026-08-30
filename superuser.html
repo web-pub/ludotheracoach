@@ -151,7 +151,8 @@
       const oldUid = oldDoc.id;
       const oldData = oldDoc.data();
 
-      const nouvelEmail = cle + "-r" + Date.now() + "@ludotheracoach.local";
+      const cleEmail = cle.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+      const nouvelEmail = cleEmail + "-r" + Date.now() + "@ludotheracoach.local";
 
       secondaryApp = firebase.initializeApp(firebaseConfig, "reset-" + Date.now());
       const cred = await secondaryApp.auth().createUserWithEmailAndPassword(nouvelEmail, nouveauMdp);
@@ -184,9 +185,12 @@
       await db.collection("users").doc(oldUid).delete();
 
       showMsg(msg, "Nouveau mot de passe défini pour " + identifiant + ".", "ok");
+      alert("Nouveau mot de passe défini pour " + identifiant + " : " + nouveauMdp);
       chargerComptes();
     }catch(err){
+      console.error("Échec de la réinitialisation pour " + identifiant + " :", err);
       showMsg(msg, "Erreur : " + err.message, "error");
+      alert("Erreur lors de la réinitialisation de " + identifiant + " :\n" + err.message);
     }finally{
       if(secondaryApp) secondaryApp.delete();
     }
