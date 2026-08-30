@@ -131,11 +131,16 @@ function guardRole(expectedRole){
       el.textContent = ROLE_LABELS[role] || role;
       el.className = el.className.replace(/\b(super|admin|membre)\b/g, "") + " " + (role === "superuser" ? "super" : role);
     });
+    enregistrerDerniereConnexion(user.uid);
   });
 }
 
 function logoutUser(){
   auth.signOut().then(() => window.location.href = "login.html");
+}
+
+function enregistrerDerniereConnexion(uid){
+  db.collection("users").doc(uid).update({ derniereConnexion: new Date().toISOString() }).catch(() => {});
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -167,5 +172,6 @@ function guardRoles(allowedRoles){
       el.textContent = ROLE_LABELS[role] || role;
       el.className = el.className.replace(/\b(super|admin|membre)\b/g, "") + " " + (role === "superuser" ? "super" : role);
     });
+    enregistrerDerniereConnexion(user.uid);
   });
 }

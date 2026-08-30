@@ -84,20 +84,19 @@
     </div>
 
     <table class="table" style="margin-bottom:32px;">
-      <thead><tr><th>Nom</th><th>Identifiant</th><th>Rôle</th></tr></thead>
+      <thead><tr><th>Nom</th><th>Identifiant</th><th>Rôle</th><th>Dernière connexion</th></tr></thead>
       <tbody id="users-table-body">
-        <tr><td colspan="3">Chargement…</td></tr>
+        <tr><td colspan="4">Chargement…</td></tr>
       </tbody>
     </table>
 
-    <div class="dash-card" style="max-width:440px; --accent:var(--ink); margin-bottom:22px;">
+    <div class="dash-card" style="max-width:460px; --accent:var(--ink); margin-bottom:22px;">
       <h3>Réinitialiser un mot de passe</h3>
-      <p>Envoie un lien de réinitialisation à un utilisateur, à partir de son identifiant. ⚠️ Ne fonctionne que si ce compte a une <strong>vraie adresse e-mail</strong> associée (les comptes créés avec une adresse fictive de type <code>@ludotheracoach.local</code> ne recevront jamais ce lien, car aucune boîte mail n'existe derrière). Firebase ne permet à personne — pas même au super user — de consulter un mot de passe existant : c'est une protection universelle, pas une limite de ce site.</p>
+      <p style="font-size:.85rem;">Personne — pas même toi en super user — ne peut consulter un mot de passe existant : c'est une protection universelle de tous les systèmes d'authentification, pas une limite de ce site. En revanche, cet outil <strong>fonctionne vraiment</strong> : il définit un nouveau mot de passe immédiatement, sans avoir besoin de l'ancien ni d'un e-mail réel.</p>
       <div id="reset-msg" class="auth-msg"></div>
-      <div class="field">
-        <input type="text" id="reset-identifiant" placeholder="identifiant de l'utilisateur">
-      </div>
-      <button class="btn btn-primary btn-block" onclick="superuserSendReset()">Envoyer le lien</button>
+      <div class="field"><label>Identifiant du compte</label><input type="text" id="reset-identifiant" placeholder="ex. FamilleDupont"></div>
+      <div class="field"><label>Nouveau mot de passe</label><input type="text" id="reset-nouveau-mdp" placeholder="au moins 6 caractères"></div>
+      <button class="btn btn-primary btn-block" onclick="forcerNouveauMdp()">Définir ce mot de passe</button>
     </div>
 
     <div class="section-head">
@@ -123,32 +122,100 @@
   document.getElementById("version-tag").textContent = SITE_VERSION;
   guardRole("superuser");
 
-  db.collection("users").get().then(snap => {
-    const body = document.getElementById("users-table-body");
-    if(snap.empty){
-      body.innerHTML = "<tr><td colspan='3'>Aucun utilisateur créé pour l'instant dans Firestore.</td></tr>";
+  function formatDate(iso){
+    if(!iso) return "Jamais connecté(e)";
+    const d = new Date(iso);
+    return d.toLocaleDateString("fr-BE") + " à " + d.toLocaleTimeString("fr-BE", {hour:"2-digit", minute:"2-digit"});
+  }
+
+  function chargerComptes(){
+    db.collection("users").get().then(snap => {
+      const body = document.getElementById("users-table-body");
+      if(snap.empty){
+        body.innerHTML = "<tr><td colspan='4'>Aucun utilisateur créé pour l'instant dans Firestore.</td></tr>";
+        return;
+      }
+      body.innerHTML = "";
+      snap.forEach(doc => {
+        const u = doc.data();
+        const pillClass = u.role === "superuser" ? "super" : (u.role || "membre");
+        body.innerHTML += `<tr><td>${u.nom || "—"}</td><td>${u.identifiant || "—"}</td><td><span class="pill ${pillClass}">${u.role || "?"}</span></td><td>${formatDate(u.derniereConnexion)}</td></tr>`;
+      });
+    }).catch(() => {
+      document.getElementById("users-table-body").innerHTML = "<tr><td colspan='4'>Impossible de charger la liste (vérifie la configuration Firebase).</td></tr>";
+    });
+  }
+  chargerComptes();
+
+  async function forcerNouveauMdp(){
+    const msg = document.getElementById("reset-msg");
+    const identifiant = document.getElementById("reset-identifiant").value.trim();
+    const nouveauMdp = document.getElementById("reset-nouveau-mdp").value;
+
+    if(!identifiant || nouveauMdp.length < 6){
+      showMsg(msg, "Indique l'identifiant et un mot de passe d'au moins 6 caractères.", "error");
       return;
     }
-    body.innerHTML = "";
-    snap.forEach(doc => {
-      const u = doc.data();
-      const pillClass = u.role === "superuser" ? "super" : (u.role || "membre");
-      body.innerHTML += `<tr><td>${u.nom || "—"}</td><td>${u.identifiant || "—"}</td><td><span class="pill ${pillClass}">${u.role || "?"}</span></td></tr>`;
-    });
-  }).catch(() => {
-    document.getElementById("users-table-body").innerHTML = "<tr><td colspan='3'>Impossible de charger la liste (vérifie la configuration Firebase).</td></tr>";
-  });
 
-  async function superuserSendReset(){
-    const identifiant = document.getElementById("reset-identifiant").value.trim();
-    const msg = document.getElementById("reset-msg");
-    if(!identifiant){ showMsg(msg, "Indique un identifiant.", "error"); return; }
+    const cle = identifiant.toLowerCase();
+    let secondaryApp;
     try{
-      const email = await emailDepuisIdentifiant(identifiant);
-      await auth.sendPasswordResetEmail(email);
-      showMsg(msg, "Lien envoyé pour le compte " + identifiant + ".", "ok");
+      const idDoc = await db.collection("identifiants").doc(cle).get();
+      if(!idDoc.exists){ showMsg(msg, "Identifiant inconnu.", "error"); return; }
+      const ancienEmail = idDoc.data().email;
+
+      const usersSnap = await db.collection("users").where("email","==",ancienEmail).get();
+      if(usersSnap.empty){ showMsg(msg, "Aucun compte associé à cet identifiant.", "error"); return; }
+      const oldDoc = usersSnap.docs[0];
+      const oldUid = oldDoc.id;
+      const oldData = oldDoc.data();
+
+      if(oldUid === auth.currentUser.uid){
+        showMsg(msg, "Utilise plutôt 'Modifier mon mot de passe' ci-dessous pour ton propre compte.", "error");
+        return;
+      }
+
+      const nouvelEmail = cle + "-r" + Date.now() + "@ludotheracoach.local";
+
+      secondaryApp = firebase.initializeApp(firebaseConfig, "reset-" + Date.now());
+      const cred = await secondaryApp.auth().createUserWithEmailAndPassword(nouvelEmail, nouveauMdp);
+      const newUid = cred.user.uid;
+      await secondaryApp.auth().signOut();
+
+      // recopier le profil sous le nouveau compte
+      await db.collection("users").doc(newUid).set({ ...oldData, email: nouvelEmail });
+      await db.collection("identifiants").doc(cle).set({ email: nouvelEmail });
+
+      if(oldData.role === "membre"){
+        const ficheDoc = await db.collection("fiches").doc(oldUid).get();
+        if(ficheDoc.exists){
+          await db.collection("fiches").doc(newUid).set(ficheDoc.data());
+          await db.collection("fiches").doc(oldUid).delete();
+        }
+        const suivisSnap = await db.collection("suivis").where("membreUid","==",oldUid).get();
+        for(const d of suivisSnap.docs) await d.ref.update({ membreUid: newUid });
+
+        const dispoSnap = await db.collection("disponibilites").where("membreUid","==",oldUid).get();
+        for(const d of dispoSnap.docs) await d.ref.update({ membreUid: newUid });
+
+        const rdvSnap = await db.collection("rdvReponses").where("membreUid","==",oldUid).get();
+        for(const d of rdvSnap.docs){
+          const data = d.data();
+          await db.collection("rdvReponses").doc(data.rdvId + "_" + newUid).set({ ...data, membreUid: newUid });
+          await d.ref.delete();
+        }
+      }
+
+      await db.collection("users").doc(oldUid).delete();
+
+      showMsg(msg, "Nouveau mot de passe défini pour " + identifiant + ". Il peut se reconnecter immédiatement.", "ok");
+      document.getElementById("reset-identifiant").value = "";
+      document.getElementById("reset-nouveau-mdp").value = "";
+      chargerComptes();
     }catch(err){
       showMsg(msg, "Erreur : " + err.message, "error");
+    }finally{
+      if(secondaryApp) secondaryApp.delete();
     }
   }
 

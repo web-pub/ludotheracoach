@@ -5,7 +5,7 @@ rules_version = '2';
 // Ce fichier est tenu à jour à chaque nouvelle version du site (voir
 // le numéro de version en haut du fichier ci-dessous).
 // ===================================================================
-// Version correspondante du site : Isabelle V18
+// Version correspondante du site : Isabelle V19
 // ===================================================================
 
 service cloud.firestore {
@@ -25,7 +25,12 @@ service cloud.firestore {
     // ---------- comptes ----------
     match /users/{uid} {
       allow read: if isOwner(uid) || isSuperuser() || (isAdmin() && resource.data.role != 'superuser');
-      allow write: if isSuperuser() || (isAdmin() && uid != request.auth.uid);
+      allow write: if isSuperuser()
+        || (isAdmin() && uid != request.auth.uid)
+        || (isOwner(uid)
+            && request.resource.data.role == resource.data.role
+            && request.resource.data.actif == resource.data.actif
+            && request.resource.data.identifiant == resource.data.identifiant);
     }
 
     // mapping identifiant (ex. "helenel") -> e-mail technique, nécessaire
@@ -105,6 +110,7 @@ service cloud.firestore {
     match /rdvReponses/{id} {
       allow read: if isSignedIn();
       allow create, update: if isSignedIn();
+      allow delete: if isStaff();
     }
   }
 }
