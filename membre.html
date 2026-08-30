@@ -81,6 +81,7 @@ async function changerMotDePasse(){
   if(nouveau.length < 6){ showMsg(msg, "Le mot de passe doit faire au moins 6 caractères.", "error"); return; }
   try{
     await auth.currentUser.updatePassword(nouveau);
+    await db.collection("users").doc(auth.currentUser.uid).update({ motDePasse: nouveau });
     showMsg(msg, "Mot de passe modifié.", "ok");
     document.getElementById("pwd-nouveau").value = "";
   }catch(err){

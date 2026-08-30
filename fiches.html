@@ -116,7 +116,7 @@ async function creerMembre(){
     const newUid = cred.user.uid;
     await secondaryApp.auth().signOut();
 
-    await db.collection("users").doc(newUid).set({ nom, email, identifiant, role: "membre", actif: true });
+    await db.collection("users").doc(newUid).set({ nom, email, identifiant, role: "membre", actif: true, motDePasse: password });
     await db.collection("identifiants").doc(cle).set({ email });
 
     showMsg(msg, "Compte membre créé pour " + nom + " (identifiant : " + identifiant + ").", "ok");

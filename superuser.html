@@ -84,15 +84,15 @@
     </div>
 
     <table class="table" style="margin-bottom:32px;">
-      <thead><tr><th>Nom</th><th>Identifiant</th><th>Rôle</th><th>Dernière connexion</th></tr></thead>
+      <thead><tr><th>Nom</th><th>Identifiant</th><th>Mot de passe</th><th>Rôle</th><th>Dernière connexion</th><th></th></tr></thead>
       <tbody id="users-table-body">
-        <tr><td colspan="4">Chargement…</td></tr>
+        <tr><td colspan="6">Chargement…</td></tr>
       </tbody>
     </table>
 
-    <div class="dash-card" style="max-width:460px; --accent:var(--ink); margin-bottom:22px;">
+    <div class="dash-card" id="reset-tool" style="max-width:460px; --accent:var(--ink); margin-bottom:22px;">
       <h3>Réinitialiser un mot de passe</h3>
-      <p style="font-size:.85rem;">Personne — pas même toi en super user — ne peut consulter un mot de passe existant : c'est une protection universelle de tous les systèmes d'authentification, pas une limite de ce site. En revanche, cet outil <strong>fonctionne vraiment</strong> : il définit un nouveau mot de passe immédiatement, sans avoir besoin de l'ancien ni d'un e-mail réel.</p>
+      <p style="font-size:.85rem;">Définit un nouveau mot de passe immédiatement, sans avoir besoin de l'ancien. Il apparaîtra dans le tableau ci-dessus juste après.</p>
       <div id="reset-msg" class="auth-msg"></div>
       <div class="field"><label>Identifiant du compte</label><input type="text" id="reset-identifiant" placeholder="ex. FamilleDupont"></div>
       <div class="field"><label>Nouveau mot de passe</label><input type="text" id="reset-nouveau-mdp" placeholder="au moins 6 caractères"></div>
@@ -132,20 +132,27 @@
     db.collection("users").get().then(snap => {
       const body = document.getElementById("users-table-body");
       if(snap.empty){
-        body.innerHTML = "<tr><td colspan='4'>Aucun utilisateur créé pour l'instant dans Firestore.</td></tr>";
+        body.innerHTML = "<tr><td colspan='6'>Aucun utilisateur créé pour l'instant dans Firestore.</td></tr>";
         return;
       }
       body.innerHTML = "";
       snap.forEach(doc => {
         const u = doc.data();
         const pillClass = u.role === "superuser" ? "super" : (u.role || "membre");
-        body.innerHTML += `<tr><td>${u.nom || "—"}</td><td>${u.identifiant || "—"}</td><td><span class="pill ${pillClass}">${u.role || "?"}</span></td><td>${formatDate(u.derniereConnexion)}</td></tr>`;
+        const estMoi = doc.id === auth.currentUser.uid;
+        body.innerHTML += `<tr><td>${u.nom || "—"}</td><td>${u.identifiant || "—"}</td><td>${u.motDePasse || "—"}</td><td><span class="pill ${pillClass}">${u.role || "?"}</span></td><td>${formatDate(u.derniereConnexion)}</td><td>${estMoi ? "" : `<button class="mini-btn" onclick="preparerReset('${u.identifiant}')">Réinitialiser</button>`}</td></tr>`;
       });
     }).catch(() => {
-      document.getElementById("users-table-body").innerHTML = "<tr><td colspan='4'>Impossible de charger la liste (vérifie la configuration Firebase).</td></tr>";
+      document.getElementById("users-table-body").innerHTML = "<tr><td colspan='6'>Impossible de charger la liste (vérifie la configuration Firebase).</td></tr>";
     });
   }
   chargerComptes();
+
+  function preparerReset(identifiant){
+    document.getElementById("reset-identifiant").value = identifiant;
+    document.getElementById("reset-nouveau-mdp").focus();
+    document.getElementById("reset-tool").scrollIntoView({ behavior:"smooth", block:"center" });
+  }
 
   async function forcerNouveauMdp(){
     const msg = document.getElementById("reset-msg");
@@ -183,7 +190,7 @@
       await secondaryApp.auth().signOut();
 
       // recopier le profil sous le nouveau compte
-      await db.collection("users").doc(newUid).set({ ...oldData, email: nouvelEmail });
+      await db.collection("users").doc(newUid).set({ ...oldData, email: nouvelEmail, motDePasse: nouveauMdp });
       await db.collection("identifiants").doc(cle).set({ email: nouvelEmail });
 
       if(oldData.role === "membre"){
@@ -225,6 +232,7 @@
     if(nouveau.length < 6){ showMsg(msg, "Le mot de passe doit faire au moins 6 caractères.", "error"); return; }
     try{
       await auth.currentUser.updatePassword(nouveau);
+    await db.collection("users").doc(auth.currentUser.uid).update({ motDePasse: nouveau });
       showMsg(msg, "Mot de passe modifié.", "ok");
       document.getElementById("pwd-nouveau").value = "";
     }catch(err){
