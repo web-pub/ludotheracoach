@@ -140,7 +140,8 @@ function logoutUser(){
 }
 
 function enregistrerDerniereConnexion(uid){
-  db.collection("users").doc(uid).update({ derniereConnexion: new Date().toISOString() }).catch(() => {});
+  db.collection("users").doc(uid).update({ derniereConnexion: new Date().toISOString() })
+    .catch(err => console.error("Impossible d'enregistrer la dernière connexion :", err));
 }
 
 document.addEventListener("DOMContentLoaded", () => {
